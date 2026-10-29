@@ -8,6 +8,7 @@ venv/
 # Environment variables and secrets
 .env
 .env.*
+!.env.example
 
 # Test and cache
 .pytest_cache/
