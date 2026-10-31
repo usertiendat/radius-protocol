@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RADIUS Management Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; }
+        h1 { color: #1e293b; margin-bottom: 5px; }
+        .subtitle { color: #64748b; margin-top: 0; margin-bottom: 25px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h3 { margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; }
+        .card .value { font-size: 32px; font-weight: bold; margin-top: 10px; color: #0f172a; }
+        .table-container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f8fafc; color: #475569; }
+        .status-active { background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+        .status-ended { background: #f1f5f9; color: #64748b; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <h1>RADIUS Management Dashboard</h1>
+    <p class="subtitle">Hệ thống Giám sát & Quản lý Phiên kết nối Network — Lê Ngọc Khánh Trình</p>
+
+    <!-- Thẻ Thống kê Tổng quan -->
+    <div class="grid">
+        <div class="card">
+            <h3>Tổng số phiên kết nối</h3>
+            <div class="value" id="total-sessions">0</div>
+        </div>
+        <div class="card">
+            <h3>Phiên đang hoạt động</h3>
+            <div class="value" id="active-sessions" style="color: #16a34a;">0</div>
+        </div>
+        <div class="card">
+            <h3>Tổng người dùng</h3>
+            <div class="value" id="total-users" style="color: #2563eb;">0</div>
+        </div>
+    </div>
+
+    <!-- Bảng danh sách phiên truy cập -->
+    <div class="table-container">
+        <h2>Lịch sử phiên truy cập (RADIUS Accounting)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Phiên</th>
+                    <th>Tài khoản</th>
+                    <th>Địa chỉ IP NAS</th>
+                    <th>Thời gian bắt đầu</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody id="sessions-table">
+                <tr><td colspan="5" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function fetchDashboardData() {
+            try {
+                // 1. Lấy dữ liệu thống kê
+                const summaryRes = await fetch('/api/v1/dashboard/summary');
+                const summary = await summaryRes.json();
+                document.getElementById('total-sessions').innerText = summary.total_sessions || 0;
+                document.getElementById('active-sessions').innerText = summary.active_sessions || 0;
+                document.getElementById('total-users').innerText = summary.total_users || 0;
+
+                // 2. Lấy danh sách phiên truy cập
+                const sessionsRes = await fetch('/api/v1/accounting/sessions');
+                const sessions = await sessionsRes.json();
+                
+                const tableBody = document.getElementById('sessions-table');
+                tableBody.innerHTML = '';
+
+                if (sessions.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Chưa có dữ liệu phiên truy cập nào</td></tr>';
+                    return;
+                }
+
+                sessions.forEach(s => {
+                    const isActive = !s.acctstoptime;
+                    const row = `
+                        <tr>
+                            <td>${s.radacctid}</td>
+                            <td><strong>${s.username}</strong></td>
+                            <td>${s.nasipaddress}</td>
+                            <td>${s.acctstarttime || 'N/A'}</td>
+                            <td>
+                                <span class="${isActive ? 'status-active' : 'status-ended'}">
+                                    ${isActive ? 'ĐANG HOẠT ĐỘNG' : 'ĐÃ KẾT THÚC'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } catch (err) {
+                console.error("Lỗi khi kết nối API:", err);
+            }
+        }
+
+        fetchDashboardData();
+    </script>
+</body>
+</html>
