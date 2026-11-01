@@ -194,21 +194,8 @@ pip install -r requirements.txt
 
 ### Bước 5: Cấu hình Database
 
-Tạo database:
-
-```sql
-CREATE DATABASE radius_db;
-```
-
-Sau đó import file database:
-
-```bash
-mysql -u root -p radius_db < database/schema.sql
-```
-
-Cấu hình thông tin kết nối database trong file `.env`.
-
-Ví dụ:
+Backend dùng SQLite tại `backend/radius.db` nếu chưa cấu hình database. Để kết nối
+MySQL/MariaDB, tạo file `.env` ở thư mục gốc dự án và khai báo:
 
 ```env
 DB_HOST=localhost
@@ -218,6 +205,42 @@ DB_USER=root
 DB_PASSWORD=your_password
 ```
 
+Có thể dùng URL kết nối đầy đủ qua `DATABASE_URL` thay cho các biến `DB_*`.
+Khi dùng MySQL/MariaDB, tạo database trước khi chạy backend:
+
+```sql
+CREATE DATABASE radius_db;
+```
+
+Các bảng được tạo tự động khi backend khởi động.
+
+### Bước 6: Khởi động Backend
+
+Từ thư mục `backend`:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Tài liệu Swagger: `http://127.0.0.1:8000/docs`.
+
+#### API quản lý
+
+| Tài nguyên | Endpoint |
+|---|---|
+| User | `GET/POST /users`, `GET/PATCH/DELETE /users/{user_id}` |
+| Group | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{group_id}` |
+| NAS | `GET/POST /nas`, `GET/PATCH/DELETE /nas/{nas_id}` |
+
+Tạo user nhận `username`, `password` và tùy chọn `group_ids`. Password được
+PBKDF2 hash trước khi lưu. User có thể thuộc nhiều group; xóa user hoặc group
+sẽ xóa các liên kết tương ứng. NAS nhận `name`, `ip_address`, `shared_secret`
+và tùy chọn `description`, `is_active`. API không trả password hash hoặc NAS
+shared secret trong response.
+
+> API quản trị hiện chưa có cơ chế xác thực/ủy quyền. Chỉ nên chạy trong môi
+> trường phát triển tin cậy; cần bổ sung bảo vệ truy cập và HTTPS trước khi
+> triển khai thực tế.
 
 ---
 
@@ -233,22 +256,10 @@ RADIUS Server sẽ chạy ở chế độ debug để hiển thị quá trình x
 
 ### Khởi động Backend
 
-Tại thư mục `backend`:
+Chạy tại thư mục `backend`:
 
 ```bash
-uvicorn main:app --reload
-```
-
-Sau khi khởi động, API có thể được truy cập thông qua:
-
-```text
-http://127.0.0.1:8000
-```
-
-Swagger API Documentation:
-
-```text
-http://127.0.0.1:8000/docs
+uvicorn app.main:app --reload
 ```
 
 ### Kiểm tra RADIUS Authentication
@@ -302,8 +313,8 @@ Việc phân tích packet giúp kiểm tra quá trình trao đổi giữa RADIUS
 Các chức năng dự kiến được triển khai trong project:
 
 * [ ] Web Dashboard
-* [ ] User Management
-* [ ] Group & Role Management
+* [x] User Management API
+* [x] Group Management API
 * [ ] Authentication Log
 * [ ] Accounting
 * [ ] Access Control Policy
