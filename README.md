@@ -228,15 +228,18 @@ Tài liệu Swagger: `http://127.0.0.1:8000/docs`.
 
 | Tài nguyên | Endpoint |
 |---|---|
-| User | `GET/POST /users`, `GET/PATCH/DELETE /users/{user_id}` |
+| User | `GET/POST /users`, `GET/PATCH/DELETE /users/{username}` |
 | Group | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{group_id}` |
 | NAS | `GET/POST /nas`, `GET/PATCH/DELETE /nas/{nas_id}` |
 
-Tạo user nhận `username`, `password` và tùy chọn `group_ids`. Password được
-PBKDF2 hash trước khi lưu. User có thể thuộc nhiều group; xóa user hoặc group
-sẽ xóa các liên kết tương ứng. NAS nhận `name`, `ip_address`, `shared_secret`
-và tùy chọn `description`, `is_active`. API không trả password hash hoặc NAS
-shared secret trong response.
+Tạo user nhận `username`, `password` và tùy chọn `group_ids`. Hồ sơ user được
+lưu trong `app_users`; password mạng được ghi vào `radcheck` dưới thuộc tính
+`Cleartext-Password` để FreeRADIUS sử dụng. API user dùng `username` làm định
+danh và không trả password. User có thể thuộc nhiều group; khi xóa user chỉ
+xóa hồ sơ, liên kết group và thông tin xác thực `radcheck`, không xóa log
+`radacct` hoặc `radpostauth`. NAS nhận `name`, `ip_address`, `shared_secret`
+và tùy chọn `description`, `is_active`. API chỉ trả cờ `is_secret_set`, không
+trả NAS shared secret.
 
 > API quản trị hiện chưa có cơ chế xác thực/ủy quyền. Chỉ nên chạy trong môi
 > trường phát triển tin cậy; cần bổ sung bảo vệ truy cập và HTTPS trước khi
