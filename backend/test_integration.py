@@ -90,8 +90,52 @@ def run_integration_tests():
         assert data3.get("detail") == "Tên đăng nhập hoặc mật khẩu không hợp lệ."
         print(f"    -> [PASS] HTTP {resp3.status_code}: {data3}\n")
 
+                # Ca 4: Username chỉ chứa khoảng trắng
+        print("[*] Ca 4: Kiểm tra username chỉ chứa khoảng trắng...")
+        resp4 = client.post(
+            "/auth/login",
+            json={"username": "   ", "password": "ValidPassword123"},
+        )
+        assert resp4.status_code == 422, (
+            f"Mong đợi 422, nhận {resp4.status_code}: {resp4.text}"
+        )
+        print(f"    -> [PASS] HTTP {resp4.status_code}\n")
+
+        # Ca 5: Password chỉ chứa khoảng trắng
+        print("[*] Ca 5: Kiểm tra password chỉ chứa khoảng trắng...")
+        resp5 = client.post(
+            "/auth/login",
+            json={"username": "validuser", "password": "   "},
+        )
+        assert resp5.status_code == 422, (
+            f"Mong đợi 422, nhận {resp5.status_code}: {resp5.text}"
+        )
+        print(f"    -> [PASS] HTTP {resp5.status_code}\n")
+
+        # Ca 6: Thiếu username
+        print("[*] Ca 6: Kiểm tra request thiếu username...")
+        resp6 = client.post(
+            "/auth/login",
+            json={"password": "ValidPassword123"},
+        )
+        assert resp6.status_code == 422, (
+            f"Mong đợi 422, nhận {resp6.status_code}: {resp6.text}"
+        )
+        print(f"    -> [PASS] HTTP {resp6.status_code}\n")
+
+        # Ca 7: Thiếu password
+        print("[*] Ca 7: Kiểm tra request thiếu password...")
+        resp7 = client.post(
+            "/auth/login",
+            json={"username": "validuser"},
+        )
+        assert resp7.status_code == 422, (
+            f"Mong đợi 422, nhận {resp7.status_code}: {resp7.text}"
+        )
+        print(f"    -> [PASS] HTTP {resp7.status_code}\n")
+
     print("=" * 65)
-    print("XÁC NHẬN: TẤT CẢ CÁC CA KIỂM THỬ TÍCH HỢP ĐỀU THÀNH CÔNG VỚI FREERADIUS THẬT!")
+    print("XÁC NHẬN: TẤT CẢ 7 CA KIỂM THỬ TÍCH HỢP ĐỀU THÀNH CÔNG!")
     print("=" * 65)
 
 

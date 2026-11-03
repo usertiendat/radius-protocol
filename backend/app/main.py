@@ -1,6 +1,11 @@
 from fastapi import FastAPI, HTTPException, status
 
 try:
+    from app.routers.health import (
+        database_health,
+        health_check,
+        router as health_router,
+    )
     from app.schemas import LoginRequest, LoginResponse
     from app.radius_auth import (
         authenticate_radius,
@@ -10,6 +15,11 @@ try:
         RadiusError,
     )
 except ImportError:
+    from routers.health import (
+        database_health,
+        health_check,
+        router as health_router,
+    )
     from schemas import LoginRequest, LoginResponse
     from radius_auth import (
         authenticate_radius,
@@ -25,13 +35,8 @@ app = FastAPI(
     version="0.1.0",
 )
 
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "service": "radius-backend",
-    }
+# Đăng ký Health Monitoring Router (/health, /health/database)
+app.include_router(health_router)
 
 
 @app.post(
