@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.database import get_db
+from datetime import date
 
-router = APIRouter(prefix="/accounting", tags=["Accounting & Monitoring"])
+router = APIRouter(prefix="/api/v1", tags=["Accounting & Logs"])
 
-# 1. Danh sách tất cả các phiên truy cập
+# 1. GET /api/v1/accounting/sessions (Truy vấn lịch sử các phiên kết nối, sắp xếp giảm dần, hỗ trợ phân trang)
 @router.get("/accounting/sessions")
-def get_accounting_sessions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_accounting_sessions(skip: int = 0, limit: int = 100, db: Session = Depends()):
     query = text("""
         SELECT 
             radacctid, username, nasipaddress, acctstarttime, 
@@ -19,9 +19,9 @@ def get_accounting_sessions(skip: int = 0, limit: int = 100, db: Session = Depen
     result = db.execute(query, {"limit": limit, "skip": skip}).mappings().all()
     return list(result)
 
-# 2. Chi tiết 1 phiên truy cập cụ thể theo ID
+# 2. GET /api/v1/accounting/sessions/{id} (Chi tiết 1 phiên kết nối)
 @router.get("/accounting/sessions/{id}")
-def get_accounting_session_by_id(id: int, db: Session = Depends(get_db)):
+def get_accounting_session_by_id(id: int, db: Session = Depends()):
     query = text("""
         SELECT * FROM radacct WHERE radacctid = :id
     """)
@@ -30,23 +30,24 @@ def get_accounting_session_by_id(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Session not found")
     return dict(result)
 
-# 3. Thống kê dung lượng & tổng thời lượng mạng
+# 3. GET /api/v1/accounting/statistics (Thống kê active sessions, tổng dung lượng và thời lượng)
 @router.get("/accounting/statistics")
-def get_accounting_statistics(db: Session = Depends(get_db)):
+def get_accounting_statistics(db: Session = Depends()):
     query = text("""
         SELECT 
-            SUM(acctsessiontime) as total_duration,
-            SUM(acctinputoctets) as total_download_bytes,
-            SUM(acctoutputoctets) as total_upload_bytes
+            COUNT(CASE WHEN acctstoptime IS NULL THEN 1 END) as active_sessions,
+            COALESCE(SUM(acctsessiontime), 0) as total_duration,
+            COALESCE(SUM(acctinputoctets), 0) as total_download_bytes,
+            COALESCE(SUM(acctoutputoctets), 0) as total_upload_bytes
         FROM radacct
     """)
     result = db.execute(query).mappings().first()
     return dict(result)
 
-# 4. Lịch sử xác thực từ radpostauth (Đã loại bỏ cột pass để không lộ mật khẩu)
+# 4. GET /api/v1/logs/authentication (Đọc lịch sử xác thực từ radpostauth, an toàn không chọn cột pass)
 @router.get("/logs/authentication")
 @router.get("/monitoring/logs")
-def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends()):
     query = text("""
         SELECT id, username, reply, authdate 
         FROM radpostauth 
@@ -56,15 +57,29 @@ def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db))
     result = db.execute(query, {"limit": limit, "skip": skip}).mappings().all()
     return list(result)
 
-# 5. Thống kê tổng quan cho Dashboard
+# 5. GET /api/v1/dashboard/summary (Tổng số User, số thiết bị NAS, số phiên active, và lượt login hôm nay)
 @router.get("/dashboard/summary")
-def get_dashboard_summary(db: Session = Depends(get_db)):
-    total_sessions = db.execute(text("SELECT COUNT(*) FROM radacct")).scalar() or 0
-    active_sessions = db.execute(text("SELECT COUNT(*) FROM radacct WHERE acctstoptime IS NULL")).scalar() or 0
+def get_dashboard_summary(db: Session = Depends()):
+    today_str = date.today().isoformat()
+    
     total_users = db.execute(text("SELECT COUNT(DISTINCT username) FROM radcheck")).scalar() or 0
+    total_nas = db.execute(text("SELECT COUNT(*) FROM nas")).scalar() or 0
+    active_sessions = db.execute(text("SELECT COUNT(*) FROM radacct WHERE acctstoptime IS NULL")).scalar() or 0
+    
+    login_success_today = db.execute(text("""
+        SELECT COUNT(*) FROM radpostauth 
+        WHERE reply = 'Access-Accept' AND DATE(authdate) = :today
+    """), {"today": today_str}).scalar() or 0
+    
+    login_failed_today = db.execute(text("""
+        SELECT COUNT(*) FROM radpostauth 
+        WHERE reply = 'Access-Reject' AND DATE(authdate) = :today
+    """), {"today": today_str}).scalar() or 0
     
     return {
-        "total_sessions": total_sessions,
+        "total_users": total_users,
+        "total_nas": total_nas,
         "active_sessions": active_sessions,
-        "total_users": total_users
+        "login_success_today": login_success_today,
+        "login_failed_today": login_failed_today
     }
