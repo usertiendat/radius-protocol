@@ -25,6 +25,7 @@ if _legacy_schemas_file.exists():
 
 from .user import UserCreate, UserResponse, UserUpdate
 from .group import GroupAttribute, GroupCreate, GroupResponse, GroupUpdate
+from .nas import NASCreate, NASResponse
 
 __all__ = [
     "LoginRequest",
@@ -36,4 +37,6 @@ __all__ = [
     "GroupCreate",
     "GroupUpdate",
     "GroupResponse",
+    "NASCreate",
+    "NASResponse",
 ]
