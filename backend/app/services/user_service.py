@@ -1,104 +1,106 @@
-from app.models import Radcheck, Radusergroup, AppUser
-from app.services import BaseService, transactional
-from app.core.exceptions import NotFoundError, ConflictError
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from .. import models, schemas
-
-
-def _commit(db: Session, detail: str) -> None:
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise HTTPException(status_code=409, detail=detail) from exc
-
-
-def _get_user_or_404(db: Session, username: str) -> models.AppUser:
-    user = db.scalar(select(models.AppUser).where(models.AppUser.username == username))
-    if user is None:
-        raise HTTPException(status_code=404, detail="Không tìm thấy user")
-    return user
+try:
+    from app.core.exceptions import ConflictError, NotFoundError
+    from app.models import AppUser, RadCheck, RadUserGroup
+    from app.schemas.user import UserCreate, UserUpdate
+    from app.services import BaseService, transactional
+except ImportError:
+    from core.exceptions import ConflictError, NotFoundError
+    from models import AppUser, RadCheck, RadUserGroup
+    from schemas.user import UserCreate, UserUpdate
+    from services import BaseService, transactional
 
 
-def get_user(db: Session, username: str) -> models.AppUser:
-    return _get_user_or_404(db, username)
+class UserService(BaseService):
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
 
+    def create_user(self, data: UserCreate) -> AppUser:
+        try:
+            with transactional(self.db):
+                existing_user = self.db.scalar(
+                    select(AppUser).where(AppUser.username == data.username)
+                )
+                if existing_user is not None:
+                    raise ConflictError("Username đã tồn tại")
 
-def _load_groups(db: Session, group_ids: list[int]) -> list[models.Group]:
-    groups = list(db.scalars(select(models.Group).where(models.Group.id.in_(group_ids))))
-    if len(groups) != len(set(group_ids)):
-        raise HTTPException(status_code=404, detail="Một hoặc nhiều group không tồn tại")
-    return groups
+                user = AppUser(
+                    username=data.username,
+                    full_name=data.fullname,
+                    email=data.email,
+                )
+                self.db.add(user)
+                self.db.add(
+                    RadCheck(
+                        username=data.username,
+                        attribute="Cleartext-Password",
+                        op=":=",
+                        value=data.password,
+                    )
+                )
+                self.db.flush()
+            return user
+        except IntegrityError as exc:
+            raise ConflictError("Username đã tồn tại") from exc
 
+    def get_users(self, skip: int = 0, limit: int = 20) -> list[AppUser]:
+        statement = select(AppUser).order_by(AppUser.id).offset(skip).limit(limit)
+        return list(self.db.scalars(statement))
 
-def _set_password(db: Session, username: str, password: str) -> None:
-    db.execute(
-        delete(models.RadCheck).where(
-            models.RadCheck.username == username,
-            models.RadCheck.attribute == "Cleartext-Password",
-        )
-    )
-    db.add(
-        models.RadCheck(
-            username=username,
-            attribute="Cleartext-Password",
-            op=":=",
-            value=password,
-        )
-    )
+    def get_user_by_username(self, username: str) -> AppUser:
+        user = self.db.scalar(select(AppUser).where(AppUser.username == username))
+        if user is None:
+            raise NotFoundError("Không tìm thấy user")
+        return user
 
+    def update_user(self, username: str, data: UserUpdate) -> AppUser:
+        values = data.model_dump(exclude_unset=True)
+        try:
+            with transactional(self.db):
+                user = self.db.scalar(
+                    select(AppUser).where(AppUser.username == username)
+                )
+                if user is None:
+                    raise NotFoundError("Không tìm thấy user")
 
-def create_user(db: Session, payload: schemas.UserCreate) -> models.AppUser:
-    user = models.AppUser(
-        username=payload.username,
-        email=payload.email,
-        is_active=payload.is_active,
-        groups=_load_groups(db, payload.group_ids),
-    )
-    db.add(user)
-    _set_password(db, payload.username, payload.password)
-    _commit(db, "Username đã được sử dụng")
-    db.refresh(user)
-    return user
+                if "fullname" in values:
+                    user.full_name = values.pop("fullname")
+                if "email" in values:
+                    user.email = values.pop("email")
 
+                password = values.get("password")
+                if password is not None:
+                    self.db.execute(
+                        delete(RadCheck).where(
+                            RadCheck.username == username,
+                            RadCheck.attribute == "Cleartext-Password",
+                        )
+                    )
+                    self.db.add(
+                        RadCheck(
+                            username=username,
+                            attribute="Cleartext-Password",
+                            op=":=",
+                            value=password,
+                        )
+                    )
 
-def update_user(
-    db: Session, username: str, payload: schemas.UserUpdate
-) -> models.AppUser:
-    user = _get_user_or_404(db, username)
-    values = payload.model_dump(exclude_unset=True)
-    required_fields = ("username", "is_active", "password", "group_ids")
-    if any(field in values and values[field] is None for field in required_fields):
-        raise HTTPException(status_code=422, detail="Trường bắt buộc không được là null")
+                self.db.flush()
+            return user
+        except IntegrityError as exc:
+            raise ConflictError("Không thể cập nhật user") from exc
 
-    groups = _load_groups(db, values["group_ids"]) if "group_ids" in values else []
-    new_username = values.pop("username", user.username)
-    password = values.pop("password", None)
-    if new_username != user.username:
-        db.execute(
-            update(models.RadCheck)
-            .where(models.RadCheck.username == user.username)
-            .values(username=new_username)
-        )
-        user.username = new_username
-    if password is not None:
-        _set_password(db, new_username, password)
+    def delete_user(self, username: str) -> None:
+        with transactional(self.db):
+            user = self.db.scalar(select(AppUser).where(AppUser.username == username))
+            if user is None:
+                raise NotFoundError("Không tìm thấy user")
 
-    if "group_ids" in values:
-        values.pop("group_ids")
-        user.groups = groups
-    for field, value in values.items():
-        setattr(user, field, value)
-
-    _commit(db, "Username đã được sử dụng hoặc dữ liệu không hợp lệ")
-    db.refresh(user)
-    return user
-
-
-def delete_user(db: Session, username: str) -> None:
-    user = _get_user_or_404(db, username)
-    db.execute(
-        delete(models.RadCheck).where(models.RadCheck.username == username)
-    )
-    db.delete(user)
-    _commit(db, "Không thể xóa user")
+            self.db.execute(delete(RadCheck).where(RadCheck.username == username))
+            self.db.execute(
+                delete(RadUserGroup).where(RadUserGroup.username == username)
+            )
+            self.db.delete(user)
