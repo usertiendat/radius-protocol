@@ -6,6 +6,7 @@ try:
         health_check,
         router as health_router,
     )
+    from app.routers.groups import router as groups_router
     from app.routers.users import router as users_router
     from app.schemas import LoginRequest, LoginResponse
     from app.radius_auth import (
@@ -21,6 +22,7 @@ except ImportError:
         health_check,
         router as health_router,
     )
+    from routers.groups import router as groups_router
     from routers.users import router as users_router
     from schemas import LoginRequest, LoginResponse
     from radius_auth import (
@@ -40,6 +42,7 @@ app = FastAPI(
 # Đăng ký Health Monitoring Router (/health, /health/database)
 app.include_router(health_router)
 app.include_router(users_router)
+app.include_router(groups_router)
 
 
 @app.post(
