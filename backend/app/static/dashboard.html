@@ -31,10 +31,10 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3">
-                <!-- Health Status Badge -->
+                <!-- Server & DB Health Status Badge -->
                 <div id="health-badge" class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 border border-slate-700">
                     <span id="health-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-                    <span id="health-text">Đang kiểm tra...</span>
+                    <span id="health-text">Đang kết nối...</span>
                 </div>
                 <button onclick="fetchDashboardData()" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition" title="Làm mới dữ liệu">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -48,40 +48,12 @@
 
         <!-- Stat Cards Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <!-- Card 1: Total Users -->
-            <div class="glass-card rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng người dùng</p>
-                        <h3 class="text-2xl font-extrabold text-indigo-600 mt-2" id="total-users">--</h3>
-                    </div>
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                        <i data-lucide="users" class="w-5 h-5"></i>
-                    </div>
-                </div>
-                <p class="mt-3 text-[11px] text-slate-400">Tài khoản trong hệ thống radcheck</p>
-            </div>
-
-            <!-- Card 2: NAS Devices -->
-            <div class="glass-card rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Thiết bị NAS</p>
-                        <h3 class="text-2xl font-extrabold text-blue-600 mt-2" id="total-nas">--</h3>
-                    </div>
-                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                        <i data-lucide="server" class="w-5 h-5"></i>
-                    </div>
-                </div>
-                <p class="mt-3 text-[11px] text-slate-400">Thiết bị quản lý trong bảng nas</p>
-            </div>
-
-            <!-- Card 3: Active Sessions -->
+            <!-- Card 1: Active Sessions & Statistics -->
             <div class="glass-card rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Phiên đang Active</p>
-                        <h3 class="text-2xl font-extrabold text-emerald-600 mt-2" id="active-sessions">--</h3>
+                        <h3 class="text-2xl font-extrabold text-emerald-600 mt-2" id="stat-active-sessions">--</h3>
                     </div>
                     <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                         <i data-lucide="wifi" class="w-5 h-5"></i>
@@ -89,38 +61,62 @@
                 </div>
                 <p class="mt-3 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    Đang kết nối Real-time
+                    Real-time Connected
                 </p>
             </div>
 
-            <!-- Card 4: Today Logins -->
+            <!-- Card 2: Total Duration -->
             <div class="glass-card rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Login hôm nay</p>
-                        <div class="flex items-baseline space-x-2 mt-2">
-                            <span class="text-xl font-extrabold text-emerald-600" id="login-success">0</span>
-                            <span class="text-xs text-slate-400">/</span>
-                            <span class="text-xl font-extrabold text-rose-600" id="login-failed">0</span>
-                        </div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng thời lượng</p>
+                        <h3 class="text-2xl font-extrabold text-blue-600 mt-2" id="stat-total-duration">--</h3>
                     </div>
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                        <i data-lucide="key-round" class="w-5 h-5"></i>
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="clock" class="w-5 h-5"></i>
                     </div>
                 </div>
-                <p class="mt-3 text-[11px] text-slate-400">Thành công (Accept) / Thất bại (Reject)</p>
+                <p class="mt-3 text-[11px] text-slate-400">Từ API /accounting/statistics</p>
+            </div>
+
+            <!-- Card 3: Download Traffic -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Lưu lượng Download</p>
+                        <h3 class="text-2xl font-extrabold text-indigo-600 mt-2" id="stat-download">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="arrow-down-circle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-slate-400">Tổng acctinputoctets</p>
+            </div>
+
+            <!-- Card 4: Upload Traffic -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Lưu lượng Upload</p>
+                        <h3 class="text-2xl font-extrabold text-purple-600 mt-2" id="stat-upload">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <i data-lucide="arrow-up-circle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-slate-400">Tổng acctoutputoctets</p>
             </div>
         </div>
 
-        <!-- Section 1: Sessions Table -->
+        <!-- Section 1: Sessions Table (/api/v1/accounting/sessions) -->
         <div class="glass-card rounded-2xl shadow-sm overflow-hidden border border-slate-200">
             <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
                         <i data-lucide="list" class="w-5 h-5 text-blue-600"></i>
-                        Danh sách phiên mạng (Active & History Sessions)
+                        Lịch sử phiên kết nối (Active & History Sessions)
                     </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ API /api/v1/accounting/sessions</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu gọi từ endpoint: <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">/api/v1/accounting/sessions</code></p>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -139,7 +135,7 @@
             </div>
         </div>
 
-        <!-- Section 2: Authentication Logs Table -->
+        <!-- Section 2: Authentication Logs Table (/api/v1/logs/authentication) -->
         <div class="glass-card rounded-2xl shadow-sm overflow-hidden border border-slate-200">
             <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -147,7 +143,7 @@
                         <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600"></i>
                         Nhật ký xác thực (Authentication Logs)
                     </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ API /api/v1/logs/authentication (Bảo mật: Không lộ password)</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu gọi từ endpoint: <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-600">/api/v1/logs/authentication</code></p>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -183,7 +179,7 @@
                 if (resApp.ok && resDb.ok) {
                     badge.className = "flex items-center space-x-2 bg-emerald-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400 border border-emerald-500/30";
                     dot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-                    text.innerText = "System Online";
+                    text.innerText = "Online";
                 } else {
                     badge.className = "flex items-center space-x-2 bg-amber-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-amber-400 border border-amber-500/30";
                     dot.className = "w-2 h-2 rounded-full bg-amber-500";
@@ -192,34 +188,42 @@
             } catch (err) {
                 badge.className = "flex items-center space-x-2 bg-rose-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-rose-400 border border-rose-500/30";
                 dot.className = "w-2 h-2 rounded-full bg-rose-500";
-                text.innerText = "System Offline";
+                text.innerText = "Offline";
             }
         }
 
-        // 2. Tải toàn bộ dữ liệu thật từ các Endpoints
+        // Đổi định dạng Bytes thành KB/MB/GB dễ đọc
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 2. Tải dữ liệu từ 3 API chính theo đúng yêu cầu
         async function fetchDashboardData() {
             await checkServerHealth();
 
             try {
-                // Gọi API Summary
-                const resSummary = await fetch('/api/v1/dashboard/summary');
-                if (resSummary.ok) {
-                    const data = await resSummary.json();
-                    document.getElementById('total-users').innerText = data.total_users || 0;
-                    document.getElementById('total-nas').innerText = data.total_nas || 0;
-                    document.getElementById('active-sessions').innerText = data.active_sessions || 0;
-                    document.getElementById('login-success').innerText = data.login_success_today || 0;
-                    document.getElementById('login-failed').innerText = data.login_failed_today || 0;
+                // Endpoint 1: /api/v1/accounting/statistics
+                const resStats = await fetch('/api/v1/accounting/statistics');
+                if (resStats.ok) {
+                    const stats = await resStats.json();
+                    document.getElementById('stat-active-sessions').innerText = stats.active_sessions || 0;
+                    document.getElementById('stat-total-duration').innerText = (stats.total_duration || 0) + 's';
+                    document.getElementById('stat-download').innerText = formatBytes(stats.total_download_bytes);
+                    document.getElementById('stat-upload').innerText = formatBytes(stats.total_upload_bytes);
                 }
 
-                // Gọi API Sessions
+                // Endpoint 2: /api/v1/accounting/sessions
                 const resSessions = await fetch('/api/v1/accounting/sessions');
                 if (resSessions.ok) {
                     const sessions = await resSessions.json();
                     renderSessionsTable(sessions);
                 }
 
-                // Gọi API Logs Authentication
+                // Endpoint 3: /api/v1/logs/authentication
                 const resLogs = await fetch('/api/v1/logs/authentication');
                 if (resLogs.ok) {
                     const logs = await resLogs.json();
@@ -236,7 +240,7 @@
             const tbody = document.getElementById('sessions-table');
             tbody.innerHTML = '';
             if (!sessions || sessions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Chưa có phiên truy cập nào</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Chưa có phiên truy cập nào trong radacct</td></tr>`;
                 return;
             }
             sessions.forEach(s => {
@@ -262,7 +266,7 @@
             const tbody = document.getElementById('logs-table');
             tbody.innerHTML = '';
             if (!logs || logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Chưa có nhật ký xác thực</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Chưa có nhật ký xác thực trong radpostauth</td></tr>`;
                 return;
             }
             logs.forEach(l => {
