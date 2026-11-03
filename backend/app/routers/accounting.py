@@ -3,11 +3,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import date
 
+# 1. Thêm import get_db đúng chuẩn theo yêu cầu
+try:
+    from app.core.dependencies import get_db
+except ImportError:
+    from app.database import get_db
+
 router = APIRouter(prefix="/api/v1", tags=["Accounting & Logs"])
 
-# 1. GET /api/v1/accounting/sessions (Truy vấn lịch sử các phiên kết nối, sắp xếp giảm dần, hỗ trợ phân trang)
+# 1. GET /api/v1/accounting/sessions (Lịch sử các phiên kết nối, sắp xếp giảm dần, hỗ trợ phân trang)
 @router.get("/accounting/sessions")
-def get_accounting_sessions(skip: int = 0, limit: int = 100, db: Session = Depends()):
+def get_accounting_sessions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     query = text("""
         SELECT 
             radacctid, username, nasipaddress, acctstarttime, 
@@ -21,7 +27,7 @@ def get_accounting_sessions(skip: int = 0, limit: int = 100, db: Session = Depen
 
 # 2. GET /api/v1/accounting/sessions/{id} (Chi tiết 1 phiên kết nối)
 @router.get("/accounting/sessions/{id}")
-def get_accounting_session_by_id(id: int, db: Session = Depends()):
+def get_accounting_session_by_id(id: int, db: Session = Depends(get_db)):
     query = text("""
         SELECT * FROM radacct WHERE radacctid = :id
     """)
@@ -32,7 +38,7 @@ def get_accounting_session_by_id(id: int, db: Session = Depends()):
 
 # 3. GET /api/v1/accounting/statistics (Thống kê active sessions, tổng dung lượng và thời lượng)
 @router.get("/accounting/statistics")
-def get_accounting_statistics(db: Session = Depends()):
+def get_accounting_statistics(db: Session = Depends(get_db)):
     query = text("""
         SELECT 
             COUNT(CASE WHEN acctstoptime IS NULL THEN 1 END) as active_sessions,
@@ -47,7 +53,7 @@ def get_accounting_statistics(db: Session = Depends()):
 # 4. GET /api/v1/logs/authentication (Đọc lịch sử xác thực từ radpostauth, an toàn không chọn cột pass)
 @router.get("/logs/authentication")
 @router.get("/monitoring/logs")
-def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends()):
+def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
     query = text("""
         SELECT id, username, reply, authdate 
         FROM radpostauth 
@@ -59,7 +65,7 @@ def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends()):
 
 # 5. GET /api/v1/dashboard/summary (Tổng số User, số thiết bị NAS, số phiên active, và lượt login hôm nay)
 @router.get("/dashboard/summary")
-def get_dashboard_summary(db: Session = Depends()):
+def get_dashboard_summary(db: Session = Depends(get_db)):
     today_str = date.today().isoformat()
     
     total_users = db.execute(text("SELECT COUNT(DISTINCT username) FROM radcheck")).scalar() or 0
