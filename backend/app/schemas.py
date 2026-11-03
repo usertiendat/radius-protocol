@@ -11,22 +11,22 @@ class GroupSummary(BaseModel):
 
 
 class UserCreate(BaseModel):
-    username: str = Field(min_length=1, max_length=100)
-    password: str = Field(min_length=1, max_length=256)
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=253)
     email: str | None = Field(default=None, max_length=255)
     is_active: bool = True
     group_ids: list[int] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):
-    username: str | None = Field(default=None, min_length=1, max_length=100)
-    password: str | None = Field(default=None, min_length=1, max_length=256)
+    username: str | None = Field(default=None, min_length=1, max_length=64)
+    password: str | None = Field(default=None, min_length=1, max_length=253)
     email: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None
     group_ids: list[int] | None = None
 
 
-class UserRead(BaseModel):
+class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -81,7 +81,7 @@ class NASUpdate(BaseModel):
         return str(ip_address(value)) if value is not None else None
 
 
-class NASRead(BaseModel):
+class NASResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -89,3 +89,4 @@ class NASRead(BaseModel):
     ip_address: str
     description: str | None
     is_active: bool
+    is_secret_set: bool = True
