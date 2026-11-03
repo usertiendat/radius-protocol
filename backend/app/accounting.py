@@ -42,11 +42,12 @@ def get_accounting_statistics(db: Session = Depends()):
     result = db.execute(query).mappings().first()
     return dict(result)
 
-# 4. Lịch sử xác thực từ radpostauth
+# 4. Lịch sử xác thực từ radpostauth (Đã loại bỏ cột pass để không lộ mật khẩu)
 @router.get("/logs/authentication")
+@router.get("/monitoring/logs")
 def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends()):
     query = text("""
-        SELECT id, username, pass, reply, authdate 
+        SELECT id, username, reply, authdate 
         FROM radpostauth 
         ORDER BY authdate DESC 
         LIMIT :limit OFFSET :skip
