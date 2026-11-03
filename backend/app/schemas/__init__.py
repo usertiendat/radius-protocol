@@ -23,4 +23,20 @@ if _legacy_schemas_file.exists():
         LoginRequest = getattr(_mod, "LoginRequest", None)
         LoginResponse = getattr(_mod, "LoginResponse", None)
 
-__all__ = ["LoginRequest", "LoginResponse"]
+from .user import UserCreate, UserResponse, UserUpdate
+from .group import GroupAttribute, GroupCreate, GroupResponse, GroupUpdate
+from .nas import NASCreate, NASResponse
+
+__all__ = [
+    "LoginRequest",
+    "LoginResponse",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+    "GroupAttribute",
+    "GroupCreate",
+    "GroupUpdate",
+    "GroupResponse",
+    "NASCreate",
+    "NASResponse",
+]
