@@ -27,13 +27,13 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-none">RADIUS Enterprise AAA</h1>
-                    <p class="text-xs text-slate-400 mt-1">Hệ thống Giám sát & Quản lý Truy cập Mạng — Lê Ngọc Khánh Trình</p>
+                    <p class="text-xs text-slate-400 mt-1">Hệ thống Giám sát & Quản lý Truy cập Mạng </p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
-                <!-- Server & DB Health Status Badge -->
+                <!-- Status Badge (Green/Red Online/Offline) -->
                 <div id="health-badge" class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 border border-slate-700">
-                    <span id="health-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    <span id="health-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
                     <span id="health-text">Đang kết nối...</span>
                 </div>
                 <button onclick="fetchDashboardData()" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition" title="Làm mới dữ liệu">
@@ -48,7 +48,6 @@
 
         <!-- Stat Cards Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <!-- Card 1: Active Sessions & Statistics -->
             <div class="glass-card rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
@@ -65,7 +64,6 @@
                 </p>
             </div>
 
-            <!-- Card 2: Total Duration -->
             <div class="glass-card rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
@@ -79,7 +77,6 @@
                 <p class="mt-3 text-[11px] text-slate-400">Từ API /accounting/statistics</p>
             </div>
 
-            <!-- Card 3: Download Traffic -->
             <div class="glass-card rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
@@ -93,7 +90,6 @@
                 <p class="mt-3 text-[11px] text-slate-400">Tổng acctinputoctets</p>
             </div>
 
-            <!-- Card 4: Upload Traffic -->
             <div class="glass-card rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
@@ -108,15 +104,24 @@
             </div>
         </div>
 
-        <!-- Section 1: Sessions Table (/api/v1/accounting/sessions) -->
+        <!-- Section 1: Sessions Table with Filter -->
         <div class="glass-card rounded-2xl shadow-sm overflow-hidden border border-slate-200">
-            <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
                         <i data-lucide="list" class="w-5 h-5 text-blue-600"></i>
                         Lịch sử phiên kết nối (Active & History Sessions)
                     </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu gọi từ endpoint: <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">/api/v1/accounting/sessions</code></p>
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ bảng radacct</p>
+                </div>
+                
+                <!-- Filter Controls -->
+                <div class="flex items-center gap-3">
+                    <select id="session-status-filter" onchange="filterSessionsTable()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">Tất cả phiên</option>
+                        <option value="ACTIVE">Đang kết nối (Active)</option>
+                        <option value="ENDED">Đã ngắt kết nối</option>
+                    </select>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -135,15 +140,21 @@
             </div>
         </div>
 
-        <!-- Section 2: Authentication Logs Table (/api/v1/logs/authentication) -->
+        <!-- Section 2: Auth Logs with Username Search -->
         <div class="glass-card rounded-2xl shadow-sm overflow-hidden border border-slate-200">
-            <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
                         <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600"></i>
                         Nhật ký xác thực (Authentication Logs)
                     </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu gọi từ endpoint: <code class="bg-slate-100 px-1 py-0.5 rounded text-amber-600">/api/v1/logs/authentication</code></p>
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ bảng radpostauth (Không lộ mật khẩu)</p>
+                </div>
+
+                <!-- Username Search Box -->
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="log-search-username" placeholder="Tìm kiếm theo Username..." onkeyup="filterLogsTable()" class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 w-full sm:w-64 transition">
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -166,7 +177,10 @@
     <script>
         lucide.createIcons();
 
-        // 1. Kiểm tra trạng thái máy chủ (/health và /health/database)
+        let rawSessions = [];
+        let rawLogs = [];
+
+        // 1. Đèn báo trạng thái Server (/health & /health/database)
         async function checkServerHealth() {
             const badge = document.getElementById('health-badge');
             const dot = document.getElementById('health-dot');
@@ -178,21 +192,20 @@
 
                 if (resApp.ok && resDb.ok) {
                     badge.className = "flex items-center space-x-2 bg-emerald-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400 border border-emerald-500/30";
-                    dot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                    dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
                     text.innerText = "Online";
                 } else {
                     badge.className = "flex items-center space-x-2 bg-amber-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-amber-400 border border-amber-500/30";
-                    dot.className = "w-2 h-2 rounded-full bg-amber-500";
+                    dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
                     text.innerText = "DB Warning";
                 }
             } catch (err) {
                 badge.className = "flex items-center space-x-2 bg-rose-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-rose-400 border border-rose-500/30";
-                dot.className = "w-2 h-2 rounded-full bg-rose-500";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
                 text.innerText = "Offline";
             }
         }
 
-        // Đổi định dạng Bytes thành KB/MB/GB dễ đọc
         function formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 B';
             const k = 1024;
@@ -201,12 +214,12 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // 2. Tải dữ liệu từ 3 API chính theo đúng yêu cầu
+        // 2. Fetch dữ liệu API
         async function fetchDashboardData() {
             await checkServerHealth();
 
             try {
-                // Endpoint 1: /api/v1/accounting/statistics
+                // Stats API
                 const resStats = await fetch('/api/v1/accounting/statistics');
                 if (resStats.ok) {
                     const stats = await resStats.json();
@@ -216,34 +229,44 @@
                     document.getElementById('stat-upload').innerText = formatBytes(stats.total_upload_bytes);
                 }
 
-                // Endpoint 2: /api/v1/accounting/sessions
+                // Sessions API
                 const resSessions = await fetch('/api/v1/accounting/sessions');
                 if (resSessions.ok) {
-                    const sessions = await resSessions.json();
-                    renderSessionsTable(sessions);
+                    rawSessions = await resSessions.json();
+                    filterSessionsTable();
                 }
 
-                // Endpoint 3: /api/v1/logs/authentication
+                // Logs API
                 const resLogs = await fetch('/api/v1/logs/authentication');
                 if (resLogs.ok) {
-                    const logs = await resLogs.json();
-                    renderLogsTable(logs);
+                    rawLogs = await resLogs.json();
+                    filterLogsTable();
                 }
             } catch (err) {
-                console.error("Lỗi khi kết nối API:", err);
+                console.error("Lỗi kết nối API:", err);
             }
 
             lucide.createIcons();
         }
 
-        function renderSessionsTable(sessions) {
+        // Lọc danh sách Phiên (Active vs Ended)
+        function filterSessionsTable() {
+            const filterValue = document.getElementById('session-status-filter').value;
             const tbody = document.getElementById('sessions-table');
             tbody.innerHTML = '';
-            if (!sessions || sessions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Chưa có phiên truy cập nào trong radacct</td></tr>`;
+
+            let filtered = rawSessions.filter(s => {
+                if (filterValue === 'ACTIVE') return !s.acctstoptime;
+                if (filterValue === 'ENDED') return s.acctstoptime !== null;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Không có dữ liệu phù hợp</td></tr>`;
                 return;
             }
-            sessions.forEach(s => {
+
+            filtered.forEach(s => {
                 const isActive = !s.acctstoptime;
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50/60 transition">
@@ -260,16 +283,23 @@
                     </tr>
                 `;
             });
+            lucide.createIcons();
         }
 
-        function renderLogsTable(logs) {
+        // Tìm kiếm Nhật ký theo Username
+        function filterLogsTable() {
+            const keyword = document.getElementById('log-search-username').value.toLowerCase();
             const tbody = document.getElementById('logs-table');
             tbody.innerHTML = '';
-            if (!logs || logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Chưa có nhật ký xác thực trong radpostauth</td></tr>`;
+
+            let filtered = rawLogs.filter(l => (l.username || '').toLowerCase().includes(keyword));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Không tìm thấy nhật ký trùng khớp</td></tr>`;
                 return;
             }
-            logs.forEach(l => {
+
+            filtered.forEach(l => {
                 const isAccept = l.reply === 'Access-Accept';
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50/60 transition">
@@ -284,6 +314,7 @@
                     </tr>
                 `;
             });
+            lucide.createIcons();
         }
 
         fetchDashboardData();
