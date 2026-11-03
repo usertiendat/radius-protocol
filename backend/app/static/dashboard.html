@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RADIUS Enterprise AAA - Monitoring Dashboard</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -32,10 +30,11 @@
                     <p class="text-xs text-slate-400 mt-1">Hệ thống Giám sát & Quản lý Truy cập Mạng — Lê Ngọc Khánh Trình</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <div id="status-badge" class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400 border border-emerald-500/20">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="status-text">Live System</span>
+            <div class="flex items-center space-x-3">
+                <!-- Health Status Badge -->
+                <div id="health-badge" class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 border border-slate-700">
+                    <span id="health-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    <span id="health-text">Đang kiểm tra...</span>
                 </div>
                 <button onclick="fetchDashboardData()" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition" title="Làm mới dữ liệu">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -48,60 +47,72 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         <!-- Stat Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Card 1: Total Sessions -->
-            <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng số phiên kết nối</p>
-                        <h3 class="text-3xl font-extrabold text-slate-900 mt-2" id="total-sessions">--</h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                        <i data-lucide="clock" class="w-6 h-6"></i>
-                    </div>
-                </div>
-                <div class="mt-4 flex items-center text-xs text-slate-500 space-x-1">
-                    <i data-lucide="activity" class="w-3.5 h-3.5 text-blue-500"></i>
-                    <span>Tích lũy từ hệ thống RADIUS Accounting</span>
-                </div>
-            </div>
-
-            <!-- Card 2: Active Sessions -->
-            <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Phiên đang hoạt động</p>
-                        <h3 class="text-3xl font-extrabold text-emerald-600 mt-2" id="active-sessions">--</h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                        <i data-lucide="wifi" class="w-6 h-6"></i>
-                    </div>
-                </div>
-                <div class="mt-4 flex items-center text-xs text-emerald-600 space-x-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span>Đang kết nối Real-time</span>
-                </div>
-            </div>
-
-            <!-- Card 3: Total Users -->
-            <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- Card 1: Total Users -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng người dùng</p>
-                        <h3 class="text-3xl font-extrabold text-indigo-600 mt-2" id="total-users">--</h3>
+                        <h3 class="text-2xl font-extrabold text-indigo-600 mt-2" id="total-users">--</h3>
                     </div>
-                    <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                        <i data-lucide="users" class="w-6 h-6"></i>
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="users" class="w-5 h-5"></i>
                     </div>
                 </div>
-                <div class="mt-4 flex items-center text-xs text-slate-500 space-x-1">
-                    <i data-lucide="database" class="w-3.5 h-3.5 text-indigo-500"></i>
-                    <span>Tài khoản trong hệ thống radcheck</span>
+                <p class="mt-3 text-[11px] text-slate-400">Tài khoản trong hệ thống radcheck</p>
+            </div>
+
+            <!-- Card 2: NAS Devices -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Thiết bị NAS</p>
+                        <h3 class="text-2xl font-extrabold text-blue-600 mt-2" id="total-nas">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="server" class="w-5 h-5"></i>
+                    </div>
                 </div>
+                <p class="mt-3 text-[11px] text-slate-400">Thiết bị quản lý trong bảng nas</p>
+            </div>
+
+            <!-- Card 3: Active Sessions -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Phiên đang Active</p>
+                        <h3 class="text-2xl font-extrabold text-emerald-600 mt-2" id="active-sessions">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i data-lucide="wifi" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    Đang kết nối Real-time
+                </p>
+            </div>
+
+            <!-- Card 4: Today Logins -->
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Login hôm nay</p>
+                        <div class="flex items-baseline space-x-2 mt-2">
+                            <span class="text-xl font-extrabold text-emerald-600" id="login-success">0</span>
+                            <span class="text-xs text-slate-400">/</span>
+                            <span class="text-xl font-extrabold text-rose-600" id="login-failed">0</span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <i data-lucide="key-round" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-slate-400">Thành công (Accept) / Thất bại (Reject)</p>
             </div>
         </div>
 
-        <!-- Section 1: Active & History Sessions Table -->
+        <!-- Section 1: Sessions Table -->
         <div class="glass-card rounded-2xl shadow-sm overflow-hidden border border-slate-200">
             <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -109,16 +120,11 @@
                         <i data-lucide="list" class="w-5 h-5 text-blue-600"></i>
                         Danh sách phiên mạng (Active & History Sessions)
                     </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu lấy trực tiếp từ bảng radacct qua API /api/v1/accounting/sessions</p>
-                </div>
-                <div class="relative">
-                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="sessions-search" placeholder="Tìm kiếm phiên..." onkeyup="filterSessionsTable()" class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white w-full sm:w-64 transition">
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ API /api/v1/accounting/sessions</p>
                 </div>
             </div>
-
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse" id="table-sessions-element">
+                <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/80 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                             <th class="py-3.5 px-6">ID Phiên</th>
@@ -128,9 +134,7 @@
                             <th class="py-3.5 px-6">Trạng thái</th>
                         </tr>
                     </thead>
-                    <tbody id="sessions-table" class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                        <!-- Content Rendered by JS -->
-                    </tbody>
+                    <tbody id="sessions-table" class="divide-y divide-slate-100 text-xs font-medium text-slate-700"></tbody>
                 </table>
             </div>
         </div>
@@ -143,10 +147,9 @@
                         <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600"></i>
                         Nhật ký xác thực (Authentication Logs)
                     </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu lấy từ bảng radpostauth qua API /api/v1/monitoring/logs (An toàn: Không lưu/hiện pass)</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ API /api/v1/logs/authentication (Bảo mật: Không lộ password)</p>
                 </div>
             </div>
-
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -157,9 +160,7 @@
                             <th class="py-3.5 px-6">Phản hồi (Reply)</th>
                         </tr>
                     </thead>
-                    <tbody id="logs-table" class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                        <!-- Content Rendered by JS -->
-                    </tbody>
+                    <tbody id="logs-table" class="divide-y divide-slate-100 text-xs font-medium text-slate-700"></tbody>
                 </table>
             </div>
         </div>
@@ -167,159 +168,120 @@
     </main>
 
     <script>
-        // Khởi tạo Lucide Icons
         lucide.createIcons();
 
-        // --------------------------------------------------------------------------
-        // DỮ LIỆU MẪU (MOCK DATA) - Dùng khi chưa bật Server Backend để test giao diện
-        // --------------------------------------------------------------------------
-        const MOCK_SUMMARY = { total_sessions: 142, active_sessions: 5, total_users: 38 };
-        const MOCK_SESSIONS = [
-            { radacctid: 101, username: "tiendat", nasipaddress: "192.168.1.10", acctstarttime: "2026-11-04 08:30:00", acctstoptime: null },
-            { radacctid: 102, username: "tutam", nasipaddress: "192.168.1.15", acctstarttime: "2026-11-04 09:12:00", acctstoptime: null },
-            { radacctid: 103, username: "khanhtrinh", nasipaddress: "192.168.1.20", acctstarttime: "2026-11-04 09:45:00", acctstoptime: null },
-            { radacctid: 104, username: "guest_user", nasipaddress: "192.168.1.50", acctstarttime: "2026-11-04 07:10:00", acctstoptime: "2026-11-04 08:00:00" },
-            { radacctid: 105, username: "admin_test", nasipaddress: "127.0.0.1", acctstarttime: "2026-11-03 14:00:00", acctstoptime: "2026-11-03 16:30:00" }
-        ];
-        const MOCK_LOGS = [
-            { id: 501, username: "tiendat", reply: "Access-Accept", authdate: "2026-11-04 08:30:00" },
-            { id: 502, username: "tutam", reply: "Access-Accept", authdate: "2026-11-04 09:12:00" },
-            { id: 503, username: "unknown_user", reply: "Access-Reject", authdate: "2026-11-04 09:20:11" },
-            { id: 504, username: "khanhtrinh", reply: "Access-Accept", authdate: "2026-11-04 09:45:00" },
-            { id: 505, username: "attacker", reply: "Access-Reject", authdate: "2026-11-04 10:01:05" }
-        ];
-
-        // --------------------------------------------------------------------------
-        // HÀM GỌI API & RENDER GIAO DIỆN
-        // --------------------------------------------------------------------------
-        async function fetchDashboardData() {
-            let isMock = false;
-            let summaryData = MOCK_SUMMARY;
-            let sessionsData = MOCK_SESSIONS;
-            let logsData = MOCK_LOGS;
+        // 1. Kiểm tra trạng thái máy chủ (/health và /health/database)
+        async function checkServerHealth() {
+            const badge = document.getElementById('health-badge');
+            const dot = document.getElementById('health-dot');
+            const text = document.getElementById('health-text');
 
             try {
-                // 1. Gọi API Summary
-                const resSummary = await fetch('/api/v1/dashboard/summary');
-                if (resSummary.ok) summaryData = await resSummary.json();
+                const resApp = await fetch('/health');
+                const resDb = await fetch('/health/database');
 
-                // 2. Gọi API Sessions
-                const resSessions = await fetch('/api/v1/accounting/sessions');
-                if (resSessions.ok) sessionsData = await resSessions.json();
-
-                // 3. Gọi API Monitoring Logs
-                const resLogs = await fetch('/api/v1/monitoring/logs');
-                if (resLogs.ok) logsData = await resLogs.json();
-
+                if (resApp.ok && resDb.ok) {
+                    badge.className = "flex items-center space-x-2 bg-emerald-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400 border border-emerald-500/30";
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                    text.innerText = "System Online";
+                } else {
+                    badge.className = "flex items-center space-x-2 bg-amber-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-amber-400 border border-amber-500/30";
+                    dot.className = "w-2 h-2 rounded-full bg-amber-500";
+                    text.innerText = "DB Warning";
+                }
             } catch (err) {
-                console.warn("Chưa kết nối được API thật, hệ thống tự động dùng Mock Data để hiển thị giao diện:", err);
-                isMock = true;
+                badge.className = "flex items-center space-x-2 bg-rose-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-rose-400 border border-rose-500/30";
+                dot.className = "w-2 h-2 rounded-full bg-rose-500";
+                text.innerText = "System Offline";
             }
+        }
 
-            // Cập nhật trạng thái hiển thị
-            const statusBadge = document.getElementById('status-badge');
-            const statusText = document.getElementById('status-text');
-            if (isMock) {
-                statusBadge.className = "flex items-center space-x-2 bg-amber-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-amber-400 border border-amber-500/30";
-                statusText.innerText = "Mock Data Mode";
-            } else {
-                statusBadge.className = "flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400 border border-emerald-500/20";
-                statusText.innerText = "Live System";
+        // 2. Tải toàn bộ dữ liệu thật từ các Endpoints
+        async function fetchDashboardData() {
+            await checkServerHealth();
+
+            try {
+                // Gọi API Summary
+                const resSummary = await fetch('/api/v1/dashboard/summary');
+                if (resSummary.ok) {
+                    const data = await resSummary.json();
+                    document.getElementById('total-users').innerText = data.total_users || 0;
+                    document.getElementById('total-nas').innerText = data.total_nas || 0;
+                    document.getElementById('active-sessions').innerText = data.active_sessions || 0;
+                    document.getElementById('login-success').innerText = data.login_success_today || 0;
+                    document.getElementById('login-failed').innerText = data.login_failed_today || 0;
+                }
+
+                // Gọi API Sessions
+                const resSessions = await fetch('/api/v1/accounting/sessions');
+                if (resSessions.ok) {
+                    const sessions = await resSessions.json();
+                    renderSessionsTable(sessions);
+                }
+
+                // Gọi API Logs Authentication
+                const resLogs = await fetch('/api/v1/logs/authentication');
+                if (resLogs.ok) {
+                    const logs = await resLogs.json();
+                    renderLogsTable(logs);
+                }
+            } catch (err) {
+                console.error("Lỗi khi kết nối API:", err);
             }
-
-            // Render Thẻ Thống kê KPI
-            document.getElementById('total-sessions').innerText = summaryData.total_sessions || 0;
-            document.getElementById('active-sessions').innerText = summaryData.active_sessions || 0;
-            document.getElementById('total-users').innerText = summaryData.total_users || 0;
-
-            // Render Bảng Danh sách Phiên mạng
-            renderSessionsTable(sessionsData);
-
-            // Render Bảng Nhật ký Xác thực
-            renderLogsTable(logsData);
 
             lucide.createIcons();
         }
 
-        // Render Bảng Sessions
         function renderSessionsTable(sessions) {
             const tbody = document.getElementById('sessions-table');
             tbody.innerHTML = '';
-
             if (!sessions || sessions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">Không có dữ liệu phiên kết nối</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Chưa có phiên truy cập nào</td></tr>`;
                 return;
             }
-
             sessions.forEach(s => {
                 const isActive = !s.acctstoptime;
-                const row = `
+                tbody.innerHTML += `
                     <tr class="hover:bg-slate-50/60 transition">
-                        <td class="py-4 px-6 font-mono text-slate-500">#${s.radacctid}</td>
-                        <td class="py-4 px-6">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
-                                    ${s.username ? s.username[0] : 'U'}
-                                </div>
-                                <span class="font-semibold text-slate-900">${s.username || 'Unknown'}</span>
-                            </div>
-                        </td>
-                        <td class="py-4 px-6 font-mono text-slate-600">${s.nasipaddress || '127.0.0.1'}</td>
-                        <td class="py-4 px-6 text-slate-500">${s.acctstarttime || 'N/A'}</td>
-                        <td class="py-4 px-6">
+                        <td class="py-3.5 px-6 font-mono text-slate-500">#${s.radacctid}</td>
+                        <td class="py-3.5 px-6 font-semibold text-slate-900">${s.username || 'Unknown'}</td>
+                        <td class="py-3.5 px-6 font-mono text-slate-600">${s.nasipaddress || '127.0.0.1'}</td>
+                        <td class="py-3.5 px-6 text-slate-500">${s.acctstarttime || 'N/A'}</td>
+                        <td class="py-3.5 px-6">
                             <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}">
                                 <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}"></span>
-                                <span>${isActive ? 'Đang hoạt động' : 'Đã kết thúc'}</span>
+                                <span>${isActive ? 'Active' : 'Ended'}</span>
                             </span>
                         </td>
                     </tr>
                 `;
-                tbody.innerHTML += row;
             });
         }
 
-        // Render Bảng Logs
         function renderLogsTable(logs) {
             const tbody = document.getElementById('logs-table');
             tbody.innerHTML = '';
-
             if (!logs || logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400">Chưa có nhật ký xác thực</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Chưa có nhật ký xác thực</td></tr>`;
                 return;
             }
-
             logs.forEach(l => {
                 const isAccept = l.reply === 'Access-Accept';
-                const row = `
+                tbody.innerHTML += `
                     <tr class="hover:bg-slate-50/60 transition">
-                        <td class="py-4 px-6 font-mono text-slate-500">#${l.id}</td>
-                        <td class="py-4 px-6 font-semibold text-slate-900">${l.username}</td>
-                        <td class="py-4 px-6 text-slate-500">${l.authdate || 'N/A'}</td>
-                        <td class="py-4 px-6">
+                        <td class="py-3.5 px-6 font-mono text-slate-500">#${l.id}</td>
+                        <td class="py-3.5 px-6 font-semibold text-slate-900">${l.username}</td>
+                        <td class="py-3.5 px-6 text-slate-500">${l.authdate || 'N/A'}</td>
+                        <td class="py-3.5 px-6">
                             <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${isAccept ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
                                 <span>${l.reply}</span>
                             </span>
                         </td>
                     </tr>
                 `;
-                tbody.innerHTML += row;
             });
         }
 
-        // Lọc bảng tìm kiếm nhanh
-        function filterSessionsTable() {
-            const input = document.getElementById('sessions-search');
-            const filter = input.value.toLowerCase();
-            const tbody = document.getElementById('sessions-table');
-            const rows = tbody.getElementsByTagName('tr');
-
-            for (let i = 0; i < rows.length; i++) {
-                const text = rows[i].textContent || rows[i].innerText;
-                rows[i].style.display = text.toLowerCase().indexOf(filter) > -1 ? "" : "none";
-            }
-        }
-
-        // Tự động gọi khi tải trang
         fetchDashboardData();
     </script>
 </body>
