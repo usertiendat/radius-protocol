@@ -23,4 +23,12 @@ if _legacy_schemas_file.exists():
         LoginRequest = getattr(_mod, "LoginRequest", None)
         LoginResponse = getattr(_mod, "LoginResponse", None)
 
-__all__ = ["LoginRequest", "LoginResponse"]
+from .user import UserCreate, UserResponse, UserUpdate
+
+__all__ = [
+    "LoginRequest",
+    "LoginResponse",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+]
