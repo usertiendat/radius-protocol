@@ -3,6 +3,7 @@ from app.routers.accounting import router as accounting_router
 app.include_router(accounting_router)
 
 try:
+    from app.core.exception_handlers import register_exception_handlers
     from app.routers.health import (
         database_health,
         health_check,
@@ -19,6 +20,7 @@ try:
         RadiusError,
     )
 except ImportError:
+    from core.exception_handlers import register_exception_handlers
     from routers.health import (
         database_health,
         health_check,
@@ -40,6 +42,9 @@ app = FastAPI(
     description="API quản lý xác thực và giám sát truy cập mạng",
     version="0.1.0",
 )
+
+# Đăng ký Global Exception Handlers (Phase 0B - Step 3.3.3)
+register_exception_handlers(app)
 
 # Đăng ký Health Monitoring Router (/health, /health/database)
 app.include_router(health_router)

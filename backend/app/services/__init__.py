@@ -11,7 +11,16 @@ Quy ước chuẩn của Service Layer (Service Layer Contract):
 6. Không triển khai abstraction hoặc repository pattern dư thừa nếu chưa có nhu cầu thực tế.
 """
 
+from app.services.admin_auth import AdminAuthResult, AdminAuthService
+from app.services.admin_token import AdminTokenClaims, AdminTokenService
 from app.services.base import BaseService
 from app.services.transaction import transactional
 
-__all__ = ["BaseService", "transactional"]
+__all__ = [
+    "BaseService",
+    "transactional",
+    "AdminAuthService",
+    "AdminAuthResult",
+    "AdminTokenClaims",
+    "AdminTokenService",
+]
