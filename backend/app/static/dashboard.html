@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RADIUS Enterprise AAA - Monitoring Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none">RADIUS Enterprise AAA</h1>
+                    <p class="text-xs text-slate-400 mt-1">Hệ thống Giám sát & Quản lý Truy cập Mạng </p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <!-- Status Badge (Green/Red Online/Offline) -->
+                <div id="health-badge" class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 border border-slate-700">
+                    <span id="health-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                    <span id="health-text">Đang kết nối...</span>
+                </div>
+                <button onclick="fetchDashboardData()" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition" title="Làm mới dữ liệu">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Stat Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Phiên đang Active</p>
+                        <h3 class="text-2xl font-extrabold text-emerald-600 mt-2" id="stat-active-sessions">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i data-lucide="wifi" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    Real-time Connected
+                </p>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng thời lượng</p>
+                        <h3 class="text-2xl font-extrabold text-blue-600 mt-2" id="stat-total-duration">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="clock" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-slate-400">Từ API /accounting/statistics</p>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Lưu lượng Download</p>
+                        <h3 class="text-2xl font-extrabold text-indigo-600 mt-2" id="stat-download">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="arrow-down-circle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-slate-400">Tổng acctinputoctets</p>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Lưu lượng Upload</p>
+                        <h3 class="text-2xl font-extrabold text-purple-600 mt-2" id="stat-upload">--</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <i data-lucide="arrow-up-circle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-[11px] text-slate-400">Tổng acctoutputoctets</p>
+            </div>
+        </div>
+
+        <!-- Section 1: Sessions Table with Filter -->
+        <div class="glass-card rounded-2xl shadow-sm overflow-hidden border border-slate-200">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="list" class="w-5 h-5 text-blue-600"></i>
+                        Lịch sử phiên kết nối (Active & History Sessions)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ bảng radacct</p>
+                </div>
+                
+                <!-- Filter Controls -->
+                <div class="flex items-center gap-3">
+                    <select id="session-status-filter" onchange="filterSessionsTable()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">Tất cả phiên</option>
+                        <option value="ACTIVE">Đang kết nối (Active)</option>
+                        <option value="ENDED">Đã ngắt kết nối</option>
+                    </select>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/80 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3.5 px-6">ID Phiên</th>
+                            <th class="py-3.5 px-6">Người dùng</th>
+                            <th class="py-3.5 px-6">Địa chỉ NAS IP</th>
+                            <th class="py-3.5 px-6">Thời gian bắt đầu</th>
+                            <th class="py-3.5 px-6">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessions-table" class="divide-y divide-slate-100 text-xs font-medium text-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section 2: Auth Logs with Username Search -->
+        <div class="glass-card rounded-2xl shadow-sm overflow-hidden border border-slate-200">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600"></i>
+                        Nhật ký xác thực (Authentication Logs)
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Dữ liệu từ bảng radpostauth (Không lộ mật khẩu)</p>
+                </div>
+
+                <!-- Username Search Box -->
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="log-search-username" placeholder="Tìm kiếm theo Username..." onkeyup="filterLogsTable()" class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 w-full sm:w-64 transition">
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/80 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3.5 px-6">Log ID</th>
+                            <th class="py-3.5 px-6">Tài khoản</th>
+                            <th class="py-3.5 px-6">Thời gian xác thực</th>
+                            <th class="py-3.5 px-6">Phản hồi (Reply)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-table" class="divide-y divide-slate-100 text-xs font-medium text-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        let rawSessions = [];
+        let rawLogs = [];
+
+        // 1. Đèn báo trạng thái Server (/health & /health/database)
+        async function checkServerHealth() {
+            const badge = document.getElementById('health-badge');
+            const dot = document.getElementById('health-dot');
+            const text = document.getElementById('health-text');
+
+            try {
+                const resApp = await fetch('/health');
+                const resDb = await fetch('/health/database');
+
+                if (resApp.ok && resDb.ok) {
+                    badge.className = "flex items-center space-x-2 bg-emerald-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400 border border-emerald-500/30";
+                    dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                    text.innerText = "Online";
+                } else {
+                    badge.className = "flex items-center space-x-2 bg-amber-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-amber-400 border border-amber-500/30";
+                    dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+                    text.innerText = "DB Warning";
+                }
+            } catch (err) {
+                badge.className = "flex items-center space-x-2 bg-rose-950/80 px-3 py-1.5 rounded-full text-xs font-medium text-rose-400 border border-rose-500/30";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                text.innerText = "Offline";
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 2. Fetch dữ liệu API
+        async function fetchDashboardData() {
+            await checkServerHealth();
+
+            try {
+                // Stats API
+                const resStats = await fetch('/api/v1/accounting/statistics');
+                if (resStats.ok) {
+                    const stats = await resStats.json();
+                    document.getElementById('stat-active-sessions').innerText = stats.active_sessions || 0;
+                    document.getElementById('stat-total-duration').innerText = (stats.total_duration || 0) + 's';
+                    document.getElementById('stat-download').innerText = formatBytes(stats.total_download_bytes);
+                    document.getElementById('stat-upload').innerText = formatBytes(stats.total_upload_bytes);
+                }
+
+                // Sessions API
+                const resSessions = await fetch('/api/v1/accounting/sessions');
+                if (resSessions.ok) {
+                    rawSessions = await resSessions.json();
+                    filterSessionsTable();
+                }
+
+                // Logs API
+                const resLogs = await fetch('/api/v1/logs/authentication');
+                if (resLogs.ok) {
+                    rawLogs = await resLogs.json();
+                    filterLogsTable();
+                }
+            } catch (err) {
+                console.error("Lỗi kết nối API:", err);
+            }
+
+            lucide.createIcons();
+        }
+
+        // Lọc danh sách Phiên (Active vs Ended)
+        function filterSessionsTable() {
+            const filterValue = document.getElementById('session-status-filter').value;
+            const tbody = document.getElementById('sessions-table');
+            tbody.innerHTML = '';
+
+            let filtered = rawSessions.filter(s => {
+                if (filterValue === 'ACTIVE') return !s.acctstoptime;
+                if (filterValue === 'ENDED') return s.acctstoptime !== null;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">Không có dữ liệu phù hợp</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(s => {
+                const isActive = !s.acctstoptime;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/60 transition">
+                        <td class="py-3.5 px-6 font-mono text-slate-500">#${s.radacctid}</td>
+                        <td class="py-3.5 px-6 font-semibold text-slate-900">${s.username || 'Unknown'}</td>
+                        <td class="py-3.5 px-6 font-mono text-slate-600">${s.nasipaddress || '127.0.0.1'}</td>
+                        <td class="py-3.5 px-6 text-slate-500">${s.acctstarttime || 'N/A'}</td>
+                        <td class="py-3.5 px-6">
+                            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}">
+                                <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}"></span>
+                                <span>${isActive ? 'Active' : 'Ended'}</span>
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // Tìm kiếm Nhật ký theo Username
+        function filterLogsTable() {
+            const keyword = document.getElementById('log-search-username').value.toLowerCase();
+            const tbody = document.getElementById('logs-table');
+            tbody.innerHTML = '';
+
+            let filtered = rawLogs.filter(l => (l.username || '').toLowerCase().includes(keyword));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Không tìm thấy nhật ký trùng khớp</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(l => {
+                const isAccept = l.reply === 'Access-Accept';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/60 transition">
+                        <td class="py-3.5 px-6 font-mono text-slate-500">#${l.id}</td>
+                        <td class="py-3.5 px-6 font-semibold text-slate-900">${l.username}</td>
+                        <td class="py-3.5 px-6 text-slate-500">${l.authdate || 'N/A'}</td>
+                        <td class="py-3.5 px-6">
+                            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${isAccept ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                                <span>${l.reply}</span>
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        fetchDashboardData();
+    </script>
+</body>
+</html>
