@@ -1,6 +1,4 @@
 from fastapi import FastAPI, HTTPException, status
-from app.routers.accounting import router as accounting_router
-app.include_router(accounting_router)
 
 try:
     from app.core.exception_handlers import register_exception_handlers
@@ -19,6 +17,7 @@ try:
         RadiusConfigError,
         RadiusError,
     )
+    from app.routers.accounting import router as accounting_router
 except ImportError:
     from core.exception_handlers import register_exception_handlers
     from routers.health import (
@@ -26,6 +25,7 @@ except ImportError:
         health_check,
         router as health_router,
     )
+    from app.routers.accounting import router as accounting_router
     from routers.groups import router as groups_router
     from routers.users import router as users_router
     from schemas import LoginRequest, LoginResponse
@@ -46,11 +46,15 @@ app = FastAPI(
 # Đăng ký Global Exception Handlers (Phase 0B - Step 3.3.3)
 register_exception_handlers(app)
 
+from fastapi.staticfiles import StaticFiles  
 # Đăng ký Health Monitoring Router (/health, /health/database)
 app.include_router(health_router)
 app.include_router(users_router)
 app.include_router(groups_router)
+app.include_router(accounting_router)
 
+# Mount thư mục static để trình duyệt mở được dashboard.html
+app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
 
 @app.post(
     "/auth/login",
