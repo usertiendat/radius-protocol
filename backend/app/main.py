@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException, status
+from app.routers.accounting import router as accounting_router
+app.include_router(accounting_router)
 
 try:
     from app.routers.health import (
