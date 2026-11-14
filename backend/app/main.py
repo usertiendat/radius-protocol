@@ -1,44 +1,41 @@
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import FileResponse
+
 from app.routers.accounting import router as accounting_router
-app.include_router(accounting_router)
-
-try:
-    from app.routers.health import (
-        database_health,
-        health_check,
-        router as health_router,
-    )
-    from app.schemas import LoginRequest, LoginResponse
-    from app.radius_auth import (
-        authenticate_radius,
-        RadiusAuthenticationFailed,
-        RadiusConnectionError,
-        RadiusConfigError,
-        RadiusError,
-    )
-except ImportError:
-    from routers.health import (
-        database_health,
-        health_check,
-        router as health_router,
-    )
-    from schemas import LoginRequest, LoginResponse
-    from radius_auth import (
-        authenticate_radius,
-        RadiusAuthenticationFailed,
-        RadiusConnectionError,
-        RadiusConfigError,
-        RadiusError,
-    )
-
-app = FastAPI(
-    title="RADIUS Network Access Management",
-    description="API quản lý xác thực và giám sát truy cập mạng",
-    version="0.1.0",
+from app.routers.admin_auth import router as admin_auth_router
+from app.routers.health import (
+   database_health,
+   health_check,
+   router as health_router,
+)
+from app.schemas import LoginRequest, LoginResponse
+from app.radius_auth import (
+   authenticate_radius,
+   RadiusAuthenticationFailed,
+   RadiusConnectionError,
+   RadiusConfigError,
+   RadiusError,
 )
 
-# Đăng ký Health Monitoring Router (/health, /health/database)
+app = FastAPI(
+   title="RADIUS Network Access Management",
+   description="API quản lý xác thực và giám sát truy cập mạng",
+   version="0.1.0",
+)
+
+app.include_router(accounting_router)
+app.include_router(admin_auth_router)
 app.include_router(health_router)
+
+_DASHBOARD_FILE = Path(__file__).parent / "static" / "dashboard.html"
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/dashboard", include_in_schema=False)
+def dashboard():
+   return FileResponse(_DASHBOARD_FILE)
 
 
 @app.post(
