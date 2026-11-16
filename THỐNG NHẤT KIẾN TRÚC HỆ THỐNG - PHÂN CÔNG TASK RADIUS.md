@@ -179,28 +179,41 @@ Quy trình:
 - Các thay đổi lớn phải được kiểm thử trước khi tạo Pull Request.
 - Không commit .env, .venv, mật khẩu, shared secret hoặc dữ liệu nhạy cảm.
 
-### 9. Trạng thái hiện tại
+### 9. Trạng thái hiện tại (Cập nhật ngày 16/11/2026)
 
-Đã hoàn thành:
-- Khởi tạo FastAPI Backend.
-- Xây dựng Authentication API.
-- Cài đặt FreeRADIUS 3.2.8 trên WSL2.
-- Cài đặt và kết nối MariaDB.
-- Import schema FreeRADIUS.
-- Kết nối FreeRADIUS SQL module với MariaDB.
-- Xác thực tài khoản sqltest từ radcheck thành công.
-- Ghi nhận Access-Accept trong radpostauth.
-- Bật yêu cầu Message-Authenticator cho các RADIUS client đã cấu hình.
+**Đã hoàn thành:**
+- **Nguyễn Tiến Đạt (Core, Database, Security & Admin Auth):**
+  - Khởi tạo kiến trúc FastAPI Backend, quản lý cấu hình tập trung (`app/core/config.py`).
+  - Thiết kế đầy đủ SQLAlchemy ORM Models: 9 bảng chuẩn FreeRADIUS (`radcheck`, `radreply`, `radacct`, `nas`,...) và 2 bảng ứng dụng (`app_admins`, `app_users`), kèm công cụ kiểm tra tính toàn vẹn Schema Verifier.
+  - Quản lý vòng đời kết nối CSDL và Session connection pool trong `app/database.py`.
+  - Triển khai Service Layer nền tảng (`BaseService`) và cơ chế quản lý giao dịch tường minh `transactional()`.
+  - Triển khai Global Exception Handling và chuẩn hóa ánh xạ mã lỗi HTTP (`app/core/exception_handlers.py`).
+  - Xây dựng Health Monitoring Router (`/health` và `/health/database`).
+  - Cài đặt và cấu hình FreeRADIUS 3.2.x trên WSL2 kết nối MariaDB; tích hợp xác thực RADIUS PAP qua `pyrad2` (`app/radius_auth.py`).
+  - Xây dựng hoàn chỉnh phân hệ Admin Authentication & Security (Phase 0B):
+    - Dịch vụ xác thực Admin (`AdminAuthService`) với cơ chế băm mật khẩu bảo mật cao PBKDF2-HMAC-SHA256 (310.000 vòng) và chống timing attack.
+    - Dịch vụ JWT Token (`AdminTokenService`) hỗ trợ phát hành Access Token chuẩn OAuth2 Bearer, kiểm tra tính toàn vẹn và hết hạn.
+    - Phân quyền RBAC (`AdminRole`, `require_roles`) và Dependency tiêm danh tính quản trị viên `get_current_admin`.
+    - API Đăng nhập Admin: `POST /api/v1/admin/auth/login`.
+    - API Lấy thông tin Admin hiện tại: `GET /api/v1/admin/auth/me`.
+    - API Đổi mật khẩu an toàn: `POST /api/v1/admin/auth/change-password` (chống IDOR, kiểm tra mật khẩu hiện tại, cấm trùng mật khẩu cũ, phân tách Session với `use_cache=False`).
+    - Hoàn thành bộ kiểm thử hồi quy nền tảng Foundation Regression Suite gồm 15 file test với 266 test cases đạt tỷ lệ Pass 100%.
+    - Chuẩn hóa toàn bộ Tài liệu kiến trúc kỹ thuật Backend (`backend/ARCHITECTURE.md`) phiên bản 1.9.0.
+- **Nguyễn Tự Tâm (Quản lý User, Group, NAS - Nhánh `tutam`):**
+  - Đã hoàn thành Pydantic Schemas, Service Layer và API Router CRUD cho User (`/api/v1/users`), Group (`/api/v1/groups`) và NAS (`/api/v1/nas`).
+  - Viết bộ Unit Test cho `UserService` và `NASService`.
+- **Lê Ngọc Khánh Trình (Accounting & Dashboard - Nhánh `khanhtrinh`):**
+  - Đã hoàn thành API Router cho Accounting (`/api/v1/accounting/sessions`, `/statistics`, `/session-trend`, `/logs/authentication`, `/dashboard/summary`).
+  - Xây dựng giao diện Dashboard giám sát HTML/CSS/JS (`backend/app/static/dashboard.html`) kết nối fetch dữ liệu trực tiếp theo thời gian thực và tự động làm mới.
 
-Đang triển khai:
-- Hoàn thiện RADIUS Accounting.
-- Kiểm tra Accounting-Start, Interim-Update và Accounting-Stop.
-- Kiểm tra dữ liệu trong radacct.
+**Đang triển khai:**
+- Review code và tạo Pull Request để hợp nhất (Merge) các nhánh `tiendat`, `tutam`, `khanhtrinh` vào nhánh `main`.
+- Giải quyết xung đột cấu hình router tổng tại `backend/app/main.py`.
+- Tích hợp Dependency bảo vệ Bearer Token JWT (`get_current_admin`) vào các router User, Group, NAS và Accounting.
 
-Chưa triển khai:
-- CRUD User/Group/NAS API.
-- Dashboard Frontend.
-- Admin Authentication.
-- Thống kê và giám sát tổng thể.
+**Kế hoạch tiếp theo:**
+- Kiểm thử tích hợp toàn diện hệ thống (End-to-End Testing): Tạo User -> Xác thực qua FreeRADIUS -> Ghi nhận phiên Accounting -> Giám sát trên Dashboard.
+- Triển khai môi trường Docker Compose chứa MariaDB và FreeRADIUS cô lập để chạy kiểm thử staging.
+
 
 **Đề nghị cả ba thành viên xác nhận tài liệu này trước khi triển khai các module tiếp theo. Mọi thay đổi về công nghệ, database schema hoặc API contract cần được thống nhất trong nhóm trước khi thực hiện.**

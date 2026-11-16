@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, status
 
 try:
     from app.core.exception_handlers import register_exception_handlers
+    from app.routers.admin_auth import router as admin_auth_router
     from app.routers.health import (
         database_health,
         health_check,
@@ -17,6 +18,7 @@ try:
     )
 except ImportError:
     from core.exception_handlers import register_exception_handlers
+    from routers.admin_auth import router as admin_auth_router
     from routers.health import (
         database_health,
         health_check,
@@ -42,6 +44,9 @@ register_exception_handlers(app)
 
 # Đăng ký Health Monitoring Router (/health, /health/database)
 app.include_router(health_router)
+
+# Đăng ký Admin Authentication Router (/api/v1/admin/auth/login) (Phase 0B - Step 3.4.5)
+app.include_router(admin_auth_router)
 
 
 @app.post(
