@@ -1,91 +1,110 @@
-from fastapi import APIRouter, Depends, HTTPException
+"""
+HTTP endpoints cho Accounting, giám sát phiên kết nối mạng và nhật ký xác thực.
+Sử dụng AccountingService để thực hiện các truy vấn ORM thuần đọc, bảo đảm an toàn dữ liệu.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-from datetime import date
 
-# 1. Thêm import get_db đúng chuẩn theo yêu cầu
-try:
-    from app.core.dependencies import get_db
-except ImportError:
-    from app.database import get_db
+from app.database import get_db
+from app.services.accounting_service import AccountingService
 
-router = APIRouter(prefix="/api/v1", tags=["Accounting & Logs"])
+router = APIRouter(prefix="/api/v1", tags=["Accounting & Monitoring"])
 
-# 1. GET /api/v1/accounting/sessions (Lịch sử các phiên kết nối, sắp xếp giảm dần, hỗ trợ phân trang)
-@router.get("/accounting/sessions")
-def get_accounting_sessions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    query = text("""
-        SELECT 
-            radacctid, username, nasipaddress, acctstarttime, 
-            acctstoptime, acctsessiontime, acctinputoctets, acctoutputoctets, acctterminatecause
-        FROM radacct 
-        ORDER BY acctstarttime DESC 
-        LIMIT :limit OFFSET :skip
-    """)
-    result = db.execute(query, {"limit": limit, "skip": skip}).mappings().all()
-    return list(result)
 
-# 2. GET /api/v1/accounting/sessions/{id} (Chi tiết 1 phiên kết nối)
-@router.get("/accounting/sessions/{id}")
-def get_accounting_session_by_id(id: int, db: Session = Depends(get_db)):
-    query = text("""
-        SELECT * FROM radacct WHERE radacctid = :id
-    """)
-    result = db.execute(query, {"id": id}).mappings().first()
-    if not result:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return dict(result)
+@router.get(
+    "/accounting/sessions",
+    summary="Lấy danh sách các phiên kết nối mạng (phân trang, sắp xếp mới nhất)",
+)
+def get_accounting_sessions(
+    skip: int = Query(default=0, ge=0, description="Số lượng bản ghi bỏ qua"),
+    limit: int = Query(default=100, ge=1, le=500, description="Số lượng bản ghi tối đa"),
+    db: Session = Depends(get_db),
+):
+    """Truy vấn danh sách lịch sử phiên kết nối radacct."""
+    return AccountingService(db).list_sessions(skip=skip, limit=limit)
 
-# 3. GET /api/v1/accounting/statistics (Thống kê active sessions, tổng dung lượng và thời lượng)
-@router.get("/accounting/statistics")
-def get_accounting_statistics(db: Session = Depends(get_db)):
-    query = text("""
-        SELECT 
-            COUNT(CASE WHEN acctstoptime IS NULL THEN 1 END) as active_sessions,
-            COALESCE(SUM(acctsessiontime), 0) as total_duration,
-            COALESCE(SUM(acctinputoctets), 0) as total_download_bytes,
-            COALESCE(SUM(acctoutputoctets), 0) as total_upload_bytes
-        FROM radacct
-    """)
-    result = db.execute(query).mappings().first()
-    return dict(result)
 
-# 4. GET /api/v1/logs/authentication (Đọc lịch sử xác thực từ radpostauth, an toàn không chọn cột pass)
-@router.get("/logs/authentication")
-@router.get("/monitoring/logs")
-def get_auth_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
-    query = text("""
-        SELECT id, username, reply, authdate 
-        FROM radpostauth 
-        ORDER BY authdate DESC 
-        LIMIT :limit OFFSET :skip
-    """)
-    result = db.execute(query, {"limit": limit, "skip": skip}).mappings().all()
-    return list(result)
+@router.get(
+    "/accounting/sessions/online",
+    summary="Lấy danh sách các phiên kết nối đang hoạt động (Online)",
+)
+def get_online_sessions(
+    limit: int = Query(default=100, ge=1, le=500, description="Số lượng bản ghi tối đa"),
+    db: Session = Depends(get_db),
+):
+    """Truy vấn danh sách phiên mạng đang online (acctstoptime IS NULL)."""
+    return AccountingService(db).list_online_sessions(limit=limit)
 
-# 5. GET /api/v1/dashboard/summary (Tổng số User, số thiết bị NAS, số phiên active, và lượt login hôm nay)
-@router.get("/dashboard/summary")
-def get_dashboard_summary(db: Session = Depends(get_db)):
-    today_str = date.today().isoformat()
-    
-    total_users = db.execute(text("SELECT COUNT(DISTINCT username) FROM radcheck")).scalar() or 0
-    total_nas = db.execute(text("SELECT COUNT(*) FROM nas")).scalar() or 0
-    active_sessions = db.execute(text("SELECT COUNT(*) FROM radacct WHERE acctstoptime IS NULL")).scalar() or 0
-    
-    login_success_today = db.execute(text("""
-        SELECT COUNT(*) FROM radpostauth 
-        WHERE reply = 'Access-Accept' AND DATE(authdate) = :today
-    """), {"today": today_str}).scalar() or 0
-    
-    login_failed_today = db.execute(text("""
-        SELECT COUNT(*) FROM radpostauth 
-        WHERE reply = 'Access-Reject' AND DATE(authdate) = :today
-    """), {"today": today_str}).scalar() or 0
-    
-    return {
-        "total_users": total_users,
-        "total_nas": total_nas,
-        "active_sessions": active_sessions,
-        "login_success_today": login_success_today,
-        "login_failed_today": login_failed_today
-    }
+
+@router.get(
+    "/accounting/sessions/{session_id}",
+    summary="Lấy chi tiết một phiên kết nối theo radacctid",
+)
+def get_accounting_session_by_id(
+    session_id: int,
+    db: Session = Depends(get_db),
+):
+    """Truy vấn thông tin chi tiết một phiên radacct."""
+    session = AccountingService(db).get_session(session_id)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+    return session
+
+
+@router.get(
+    "/accounting/statistics",
+    summary="Thống kê tổng hợp: active sessions, tổng thời lượng và lưu lượng",
+)
+def get_accounting_statistics(
+    db: Session = Depends(get_db),
+):
+    """Tính toán thống kê phiên kết nối từ radacct."""
+    return AccountingService(db).get_statistics()
+
+
+@router.get(
+    "/accounting/session-trend",
+    summary="Lấy thống kê xu hướng phiên kết nối theo ngày (mặc định 7 ngày)",
+)
+def get_accounting_session_trend(
+    days: int = Query(default=7, ge=1, le=30, description="Số ngày thống kê"),
+    db: Session = Depends(get_db),
+):
+    """Lấy số lượng phiên kết nối theo từng ngày phục vụ vẽ biểu đồ."""
+    return AccountingService(db).get_session_trend(days=days)
+
+
+@router.get(
+    "/logs/authentication",
+    summary="Lấy danh sách nhật ký xác thực RADIUS gần đây (không lộ password)",
+)
+@router.get(
+    "/monitoring/logs",
+    summary="Alias lấy danh sách nhật ký xác thực RADIUS",
+    include_in_schema=False,
+)
+def get_auth_logs(
+    skip: int = Query(default=0, ge=0, description="Số lượng bản ghi bỏ qua"),
+    limit: int = Query(default=50, ge=1, le=500, description="Số lượng bản ghi tối đa"),
+    db: Session = Depends(get_db),
+):
+    """Truy vấn lịch sử xác thực radpostauth (Access-Accept / Access-Reject)."""
+    return AccountingService(db).list_auth_logs(skip=skip, limit=limit)
+
+
+@router.get(
+    "/dashboard/summary",
+    summary="Lấy dữ liệu tổng quan cho trang Dashboard giám sát",
+)
+def get_dashboard_summary(
+    db: Session = Depends(get_db),
+):
+    """
+    Thống kê tổng số người dùng, thiết bị NAS, phiên đang hoạt động,
+    và số lượt xác thực thành công/thất bại hôm nay.
+    """
+    return AccountingService(db).get_dashboard_summary()

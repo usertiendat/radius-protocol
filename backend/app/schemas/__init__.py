@@ -8,10 +8,24 @@ Chịu trách nhiệm:
 Ghi chú tương thích:
 - Nạp và re-export các schema hiện hữu từ backend/app/schemas.py (LoginRequest, LoginResponse)
   để bảo đảm 100% tương thích ngược với các router và test hiện hành.
+- Export các schema quản trị AdminLoginRequest, AdminInfoResponse, AdminLoginResponse,
+  AdminChangePasswordRequest, AdminChangePasswordResponse từ admin_auth.py.
+- Export các schema User, Group, NAS.
 """
 
 from pathlib import Path
 import importlib.util
+
+from app.schemas.admin_auth import (
+    AdminChangePasswordRequest,
+    AdminChangePasswordResponse,
+    AdminInfoResponse,
+    AdminLoginRequest,
+    AdminLoginResponse,
+)
+from .user import UserCreate, UserResponse, UserUpdate
+from .group import GroupAttribute, GroupCreate, GroupResponse, GroupUpdate
+from .nas import NASCreate, NASResponse
 
 # Tự động nạp và re-export từ schemas.py hiện hữu nếu tồn tại
 _legacy_schemas_file = Path(__file__).resolve().parent.parent / "schemas.py"
@@ -23,13 +37,14 @@ if _legacy_schemas_file.exists():
         LoginRequest = getattr(_mod, "LoginRequest", None)
         LoginResponse = getattr(_mod, "LoginResponse", None)
 
-from .user import UserCreate, UserResponse, UserUpdate
-from .group import GroupAttribute, GroupCreate, GroupResponse, GroupUpdate
-from .nas import NASCreate, NASResponse
-
 __all__ = [
     "LoginRequest",
     "LoginResponse",
+    "AdminLoginRequest",
+    "AdminInfoResponse",
+    "AdminLoginResponse",
+    "AdminChangePasswordRequest",
+    "AdminChangePasswordResponse",
     "UserCreate",
     "UserUpdate",
     "UserResponse",

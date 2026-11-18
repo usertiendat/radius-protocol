@@ -1,26 +1,33 @@
 """
-Admin Authentication Service cho Dashboard Quản trị (Phase 0B - Step 3.4.1).
+Admin Authentication Service cho Dashboard Quản trị (Phase 0B - Step 3.4.1 & Step 1.1).
 Chịu trách nhiệm:
 1. Xác thực tài khoản Dashboard Admin thông qua SQLAlchemy ORM model AppAdmin.
 2. Sử dụng cơ chế băm mật khẩu PBKDF2-HMAC-SHA256 (310.000 vòng) từ core/security.py.
 3. Tách biệt hoàn toàn với xác thực người dùng mạng RADIUS (không sử dụng bảng radcheck).
 4. Áp dụng chuẩn bảo mật:
    - Trả về thông tin Admin an toàn (không chứa password hay password_hash).
-   - Thao tác chỉ đọc (Read-Only query), không tự commit/rollback.
+   - Thao tác chỉ đọc (Read-Only query) cho login, không tự commit/rollback.
    - Chống tấn công timing attack / username enumeration bằng dummy password verification.
    - Thống nhất thông điệp lỗi cho cả trường hợp sai username và sai password.
+5. Cung cấp phương thức change_password với transactional boundary an toàn.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ForbiddenError, UnauthorizedError, ValidationError
-from app.core.security import verify_password
+from app.core.exceptions import (
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+    ValidationError,
+)
+from app.core.security import hash_password, verify_password
 from app.models.application import AppAdmin
 from app.services.base import BaseService
+from app.services.transaction import transactional
 
 logger = logging.getLogger(__name__)
 
@@ -170,3 +177,129 @@ class AdminAuthService(BaseService):
             is_active=admin.is_active,
             created_at=admin.created_at,
         )
+
+    def change_password(
+        self,
+        admin_id: int,
+        current_password: str,
+        new_password: str,
+    ) -> AdminAuthResult:
+        """
+        Thay đổi mật khẩu cho quản trị viên Dashboard đang đăng nhập.
+
+        Args:
+            admin_id: Khóa chính của quản trị viên cần đổi mật khẩu.
+            current_password: Mật khẩu hiện tại dạng rõ.
+            new_password: Mật khẩu mới dạng rõ.
+
+        Returns:
+            AdminAuthResult: DTO thông tin quản trị viên an toàn sau khi cập nhật.
+
+        Raises:
+            ValidationError: Khi tham số rỗng, sai độ dài (8-128) hoặc mật khẩu mới trùng mật khẩu cũ.
+            NotFoundError: Khi admin_id không tồn tại trong hệ thống.
+            ForbiddenError: Khi tài khoản quản trị viên bị vô hiệu hóa (is_active=False).
+            UnauthorizedError: Khi mật khẩu hiện tại không chính xác (code INVALID_CREDENTIALS).
+        """
+        # 1. Validation kiểm tra tính hợp lệ cơ bản của tham số đầu vào
+        if not isinstance(admin_id, int) or admin_id <= 0:
+            raise ValidationError(
+                message="Định danh quản trị viên không hợp lệ.",
+                code="VALIDATION_ERROR",
+            )
+
+        if not isinstance(current_password, str) or not current_password:
+            raise ValidationError(
+                message="Mật khẩu hiện tại không được để trống và phải là chuỗi ký tự.",
+                code="VALIDATION_ERROR",
+            )
+
+        if not isinstance(new_password, str) or not new_password:
+            raise ValidationError(
+                message="Mật khẩu mới không được để trống và phải là chuỗi ký tự.",
+                code="VALIDATION_ERROR",
+            )
+
+        if len(new_password) < 8 or len(new_password) > 128:
+            raise ValidationError(
+                message="Mật khẩu mới phải có độ dài từ 8 đến 128 ký tự.",
+                code="VALIDATION_ERROR",
+            )
+
+        if new_password == current_password:
+            raise ValidationError(
+                message="Mật khẩu mới không được trùng với mật khẩu hiện tại.",
+                code="PASSWORD_REUSED",
+            )
+
+        # 2. Bắt đầu transaction bằng transactional() TRƯỚC KHI thực hiện bất kỳ truy vấn nào
+        with transactional(self.db):
+            # 3. Truy vấn lại AppAdmin theo admin_id bên trong transaction
+            admin: Optional[AppAdmin] = (
+                self.db.query(AppAdmin)
+                .filter(AppAdmin.id == admin_id)
+                .first()
+            )
+
+            # 4. Kiểm tra sự tồn tại của Admin
+            if admin is None:
+                # Chạy dummy password verify để giữ thời gian thực thi đồng nhất
+                verify_password(current_password, DUMMY_PASSWORD_HASH)
+                logger.warning(
+                    "Đổi mật khẩu thất bại: Quản trị viên id=%d không tồn tại.",
+                    admin_id,
+                )
+                raise NotFoundError(
+                    message="Tài khoản quản trị viên không tồn tại.",
+                    code="RESOURCE_NOT_FOUND",
+                )
+
+            # 5. Kiểm tra trạng thái hoạt động của tài khoản
+            if not admin.is_active:
+                logger.warning(
+                    "Đổi mật khẩu bị từ chối: Tài khoản '%s' (id=%d) đã bị vô hiệu hóa.",
+                    admin.username,
+                    admin_id,
+                )
+                raise ForbiddenError(
+                    message="Tài khoản quản trị đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên cấp cao.",
+                    code="ACCOUNT_INACTIVE",
+                )
+
+            # 6. Xác minh mật khẩu hiện tại
+            is_valid = verify_password(current_password, admin.password_hash)
+            if not is_valid:
+                logger.warning(
+                    "Đổi mật khẩu thất bại: Mật khẩu hiện tại không chính xác cho tài khoản '%s' (id=%d).",
+                    admin.username,
+                    admin_id,
+                )
+                raise UnauthorizedError(
+                    message="Mật khẩu hiện tại không chính xác.",
+                    code="INVALID_CREDENTIALS",
+                )
+
+            # 7. Băm mật khẩu mới bằng PBKDF2-HMAC-SHA256 (310.000 vòng băm, salt ngẫu nhiên mới)
+            new_hash = hash_password(new_password)
+
+            # 8. Cập nhật password_hash và updated_at
+            now = datetime.now(timezone.utc)
+            admin.password_hash = new_hash
+            admin.updated_at = now
+
+            # Chuẩn bị kết quả an toàn trước khi kết thúc transaction
+            result = AdminAuthResult(
+                id=admin.id,
+                username=admin.username,
+                email=admin.email,
+                role=admin.role,
+                is_active=admin.is_active,
+                created_at=admin.created_at,
+            )
+
+        logger.info(
+            "Đổi mật khẩu thành công cho Dashboard Admin '%s' (id=%d).",
+            result.username,
+            result.id,
+        )
+        return result
