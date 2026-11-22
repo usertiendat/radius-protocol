@@ -1,5 +1,5 @@
 """
-Bộ kiểm thử đơn vị cho Accounting Router & Endpoints (Phase 0B & Giai đoạn 1).
+Bộ kiểm thử đơn vị & bảo mật cho Accounting Router & Endpoints (Phase 0B & Giai đoạn 1).
 Kiểm tra tính đúng đắn của:
 1. Endpoint GET /api/v1/accounting/sessions
 2. Endpoint GET /api/v1/accounting/sessions/online
@@ -10,28 +10,40 @@ Kiểm tra tính đúng đắn của:
 7. Endpoint GET /api/v1/dashboard/summary
 8. Endpoint GET / và GET /dashboard (phục vụ dashboard.html)
 9. Bảo toàn các routes trên FastAPI app.
+10. Kiểm tra bảo vệ RBAC & Authentication:
+    - Không có JWT -> HTTP 401 UNAUTHORIZED
+    - Sai chữ ký / Token không hợp lệ -> HTTP 401 TOKEN_INVALID
+    - Token hết hạn -> HTTP 401 TOKEN_EXPIRED
+    - Admin bị vô hiệu hóa is_active=False -> HTTP 403 ACCOUNT_INACTIVE
+    - Cả 3 vai trò (superadmin, it_admin, auditor) đều có quyền đọc Accounting.
 
 Kiểm thử độc lập với SQLite in-memory, không yêu cầu MariaDB thật.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
-from typing import Generator
+from typing import Dict, Generator, Optional
 
 # Đảm bảo thư mục backend có trong sys.path
 BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core.admin_dependencies import CurrentAdmin, get_current_admin
+from app.core.exceptions import ForbiddenError, UnauthorizedError
+from app.core.rbac import AdminRole
+from app.core.security import hash_password
 from app.database import Base
 from app.main import app, dashboard
+from app.models import AppAdmin
 from app.models.radius import Nas, RadAcct, RadCheck, RadPostAuth
 from app.routers.accounting import (
     get_accounting_session_by_id,
@@ -41,7 +53,27 @@ from app.routers.accounting import (
     get_auth_logs,
     get_dashboard_summary,
     get_online_sessions,
+    require_accounting_read,
 )
+from app.services.admin_token import AdminTokenService
+
+TEST_SECRET_KEY = "test-jwt-secret-key-32-chars-long-for-safe-unit-testing"
+ANOTHER_SECRET_KEY = "another-wrong-secret-key-for-testing-signatures-32c"
+
+
+def make_request(headers: Optional[Dict[str, str]] = None, path: str = "/api/v1/accounting/sessions", method: str = "GET") -> Request:
+    raw_headers = []
+    if headers:
+        for k, v in headers.items():
+            raw_headers.append((k.lower().encode("latin-1"), v.encode("latin-1")))
+    scope = {
+        "type": "http",
+        "method": method,
+        "path": path,
+        "headers": raw_headers,
+        "query_string": b"",
+    }
+    return Request(scope)
 
 
 @pytest.fixture
@@ -58,6 +90,42 @@ def sqlite_db() -> Generator[Session, None, None]:
 
     now = datetime.now()
     session.add_all([
+        AppAdmin(
+            id=1,
+            username="super_user",
+            password_hash=hash_password("SuperSecretPass123!"),
+            email="super@enterprise.local",
+            role=AdminRole.SUPERADMIN.value,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+        ),
+        AppAdmin(
+            id=2,
+            username="it_user",
+            password_hash=hash_password("ItSecretPass123!"),
+            email="it@enterprise.local",
+            role=AdminRole.IT_ADMIN.value,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+        ),
+        AppAdmin(
+            id=3,
+            username="auditor_user",
+            password_hash=hash_password("AuditSecretPass123!"),
+            email="audit@enterprise.local",
+            role=AdminRole.AUDITOR.value,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+        ),
+        AppAdmin(
+            id=4,
+            username="inactive_user",
+            password_hash=hash_password("InactivePass123!"),
+            email="inactive@enterprise.local",
+            role=AdminRole.AUDITOR.value,
+            is_active=False,
+            created_at=datetime.now(timezone.utc),
+        ),
         RadAcct(
             radacctid=101,
             acctsessionid="s-101",
@@ -110,6 +178,15 @@ def sqlite_db() -> Generator[Session, None, None]:
     finally:
         session.close()
 
+
+@pytest.fixture
+def token_service() -> AdminTokenService:
+    return AdminTokenService(secret_key=TEST_SECRET_KEY)
+
+
+# =============================================================================
+# ENDPOINT TESTS
+# =============================================================================
 
 def test_endpoint_get_accounting_sessions(sqlite_db: Session):
     """Kiểm tra gọi endpoint get_accounting_sessions."""
@@ -206,3 +283,91 @@ def test_routes_registered_in_fastapi_app():
     assert "/api/v1/dashboard/summary" in paths
     assert "/" in paths
     assert "/dashboard" in paths
+
+
+# =============================================================================
+# AUTHENTICATION & RBAC TESTS CHO ACCOUNTING
+# =============================================================================
+
+def test_missing_jwt_raises_unauthorized(sqlite_db: Session, token_service: AdminTokenService):
+    """Không có Authorization header -> HTTP 401 Unauthorized."""
+    req = make_request()
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_current_admin(request=req, credentials=None, db=sqlite_db, token_service=token_service)
+    assert exc_info.value.http_status == 401
+    assert exc_info.value.code == "UNAUTHORIZED"
+
+
+def test_invalid_jwt_signature_raises_unauthorized(sqlite_db: Session):
+    """JWT có chữ ký sai / secret key khác -> HTTP 401 Unauthorized."""
+    wrong_service = AdminTokenService(secret_key=ANOTHER_SECRET_KEY)
+    token = wrong_service.create_access_token(sub="1", role="superadmin")
+    req = make_request(headers={"Authorization": f"Bearer {token}"})
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+    real_service = AdminTokenService(secret_key=TEST_SECRET_KEY)
+
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_current_admin(request=req, credentials=creds, db=sqlite_db, token_service=real_service)
+    assert exc_info.value.http_status == 401
+    assert exc_info.value.code == "TOKEN_INVALID"
+
+
+def test_expired_jwt_raises_unauthorized(sqlite_db: Session, token_service: AdminTokenService):
+    """JWT đã hết hạn -> HTTP 401 Unauthorized."""
+    token = token_service.create_access_token(sub="1", role="superadmin", expires_delta=timedelta(seconds=-10))
+    req = make_request(headers={"Authorization": f"Bearer {token}"})
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+
+    with pytest.raises(UnauthorizedError) as exc_info:
+        get_current_admin(request=req, credentials=creds, db=sqlite_db, token_service=token_service)
+    assert exc_info.value.http_status == 401
+    assert exc_info.value.code == "TOKEN_EXPIRED"
+
+
+def test_inactive_admin_raises_forbidden(sqlite_db: Session, token_service: AdminTokenService):
+    """Admin bị vô hiệu hóa is_active=False -> HTTP 403 ACCOUNT_INACTIVE."""
+    token = token_service.create_access_token(sub="4", role=AdminRole.AUDITOR.value)
+    req = make_request(headers={"Authorization": f"Bearer {token}"})
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+
+    with pytest.raises(ForbiddenError) as exc_info:
+        get_current_admin(request=req, credentials=creds, db=sqlite_db, token_service=token_service)
+    assert exc_info.value.http_status == 403
+    assert exc_info.value.code == "ACCOUNT_INACTIVE"
+
+
+def test_all_three_roles_granted_accounting_read():
+    """Cả 3 vai trò (superadmin, it_admin, auditor) đều có quyền đọc Accounting/Monitoring."""
+    super_admin = CurrentAdmin(id=1, username="super", email="s@e.l", role=AdminRole.SUPERADMIN.value, is_active=True)
+    it_admin = CurrentAdmin(id=2, username="it", email="i@e.l", role=AdminRole.IT_ADMIN.value, is_active=True)
+    auditor = CurrentAdmin(id=3, username="audit", email="a@e.l", role=AdminRole.AUDITOR.value, is_active=True)
+
+    assert require_accounting_read(current_admin=super_admin) is super_admin
+    assert require_accounting_read(current_admin=it_admin) is it_admin
+    assert require_accounting_read(current_admin=auditor) is auditor
+
+
+def test_endpoints_with_authorized_admin(sqlite_db: Session):
+    """Kiểm tra các endpoints Accounting hoạt động chuẩn xác khi truyền admin hợp lệ."""
+    admin = CurrentAdmin(id=3, username="audit", email="a@e.l", role=AdminRole.AUDITOR.value, is_active=True)
+
+    sessions = get_accounting_sessions(skip=0, limit=10, db=sqlite_db, current_admin=admin)
+    assert len(sessions) == 2
+
+    online = get_online_sessions(limit=10, db=sqlite_db, current_admin=admin)
+    assert len(online) == 1
+
+    session_detail = get_accounting_session_by_id(session_id=101, db=sqlite_db, current_admin=admin)
+    assert session_detail["radacctid"] == 101
+
+    stats = get_accounting_statistics(db=sqlite_db, current_admin=admin)
+    assert stats["active_sessions"] == 1
+
+    trend = get_accounting_session_trend(days=3, db=sqlite_db, current_admin=admin)
+    assert len(trend) == 3
+
+    auth_logs = get_auth_logs(skip=0, limit=10, db=sqlite_db, current_admin=admin)
+    assert len(auth_logs) == 2
+
+    summary = get_dashboard_summary(db=sqlite_db, current_admin=admin)
+    assert summary["total_users"] == 2

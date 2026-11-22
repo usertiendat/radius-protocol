@@ -64,7 +64,7 @@ class GroupService(BaseService):
                 checks=data.checks,
                 replies=data.replies,
             )
-        return self.get_group_by_name(data.groupname)
+            return self.get_group_by_name(data.groupname)
 
     def update_group(
         self, groupname: str, data: GroupUpdate
@@ -104,7 +104,8 @@ class GroupService(BaseService):
                     )
                 )
                 self._add_attributes(RadGroupReply, groupname, replies)
-        return self.get_group_by_name(groupname)
+            self.db.flush()
+            return self.get_group_by_name(groupname)
 
     def delete_group(self, groupname: str) -> None:
         with transactional(self.db):
@@ -137,6 +138,7 @@ class GroupService(BaseService):
         self._add_users(groupname, users)
         self._add_attributes(RadGroupCheck, groupname, checks)
         self._add_attributes(RadGroupReply, groupname, replies)
+        self.db.flush()
 
     def _add_users(self, groupname: str, usernames: list[str]) -> None:
         self.db.add_all(

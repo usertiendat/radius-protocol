@@ -23,6 +23,14 @@ from app.database import SessionLocal, engine, get_db
 from app.models.verifier import SchemaVerificationSummary, verify_schema
 
 
+def get_write_db() -> Generator[Session, None, None]:
+    """
+    FastAPI Dependency Generator cung cấp Session ghi độc lập cho các thao tác write/transactional.
+    Đảm bảo Session chưa bị kích hoạt autobegin transaction bởi các dependency đọc như get_current_admin.
+    """
+    yield from get_db()
+
+
 class DatabaseConnectionError(Exception):
     """Ngoại lệ an toàn đại diện cho lỗi kết nối CSDL mà không làm lộ secret."""
 
