@@ -502,11 +502,30 @@
                     })
                 });
                 const result = await response.json();
+<<<<<<< HEAD
                 if (!response.ok) throw new Error(result.detail || "Không thể đăng nhập.");
                 sessionStorage.setItem(tokenKey, result.access_token);
                 document.getElementById("password").value = "";
                 const username = document.getElementById("username").value.trim();
                 showDashboard(username);
+=======
+                if (!response.ok) {
+                    let errorMsg = "Không thể đăng nhập.";
+                    if (result.error && result.error.message) {
+                        errorMsg = result.error.message;
+                    } else if (typeof result.detail === "string") {
+                        errorMsg = result.detail;
+                    } else if (Array.isArray(result.detail) && result.detail[0]?.msg) {
+                        errorMsg = result.detail[0].msg;
+                    }
+                    throw new Error(errorMsg);
+                }
+                sessionStorage.setItem(tokenKey, result.access_token);
+                const adminName = (result.admin && result.admin.username) || document.getElementById("username").value.trim() || "Admin";
+                sessionStorage.setItem("admin_username", adminName);
+                document.getElementById("password").value = "";
+                showDashboard(adminName);
+>>>>>>> staging
                 await fetchDashboardData();
                 clearInterval(refreshTimer);
                 refreshTimer = setInterval(fetchDashboardData, 10000);
@@ -519,7 +538,14 @@
         });
 
         refreshButton.addEventListener("click", fetchDashboardData);
+<<<<<<< HEAD
         logoutButton.addEventListener("click", () => showLogin());
+=======
+        logoutButton.addEventListener("click", () => {
+            sessionStorage.removeItem("admin_username");
+            showLogin();
+        });
+>>>>>>> staging
         document.getElementById("log-search").addEventListener("input", renderLogs);
         window.addEventListener("resize", () => {
             if (!dashboardView.classList.contains("hidden")) fetchDashboardData();
@@ -527,7 +553,12 @@
 
         checkHealth();
         if (sessionStorage.getItem(tokenKey)) {
+<<<<<<< HEAD
             showDashboard("Admin");
+=======
+            const savedName = sessionStorage.getItem("admin_username") || "Admin";
+            showDashboard(savedName);
+>>>>>>> staging
             fetchDashboardData();
             refreshTimer = setInterval(fetchDashboardData, 10000);
         }
