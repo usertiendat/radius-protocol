@@ -1,16 +1,3 @@
-<<<<<<< HEAD
-"""Administrator login endpoint for the web dashboard."""
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-
-from app.core.dependencies import get_db
-from app.core.exceptions import UnauthorizedError
-from app.core.security import TokenConfigError
-from app.schemas.admin import AdminLoginRequest, AdminLoginResponse
-from app.services.admin_auth_service import AdminAuthService
-from app.core.config import settings
-=======
 """
 Router xác thực quản trị viên Dashboard (Phase 0B - Step 3.4.5, 3.4.6 & 3.4.7).
 Cung cấp endpoints:
@@ -41,29 +28,10 @@ from app.services.admin_auth import AdminAuthService
 from app.services.admin_token import AdminTokenService
 
 logger = logging.getLogger(__name__)
->>>>>>> staging
 
 router = APIRouter(prefix="/api/v1/admin/auth", tags=["Admin Authentication"])
 
 
-<<<<<<< HEAD
-@router.post("/login", response_model=AdminLoginResponse)
-def admin_login(request: AdminLoginRequest, db: Session = Depends(get_db)):
-    try:
-        _, token = AdminAuthService(db).authenticate(
-            request.username, request.password
-        )
-    except UnauthorizedError as exc:
-        raise HTTPException(status_code=exc.http_status, detail=exc.message) from exc
-    except TokenConfigError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="Dịch vụ đăng nhập Admin chưa được cấu hình an toàn.",
-        ) from exc
-    return AdminLoginResponse(
-        access_token=token,
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-=======
 @router.post(
     "/login",
     response_model=AdminLoginResponse,
@@ -206,5 +174,4 @@ def change_password(
             is_active=admin_result.is_active,
             created_at=admin_result.created_at,
         ),
->>>>>>> staging
     )

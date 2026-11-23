@@ -1,34 +1,4 @@
 from pathlib import Path
-<<<<<<< HEAD
-
-from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import FileResponse
-
-from app.routers.accounting import router as accounting_router
-from app.routers.admin_auth import router as admin_auth_router
-from app.routers.health import (
-   database_health,
-   health_check,
-   router as health_router,
-)
-from app.schemas import LoginRequest, LoginResponse
-from app.radius_auth import (
-   authenticate_radius,
-   RadiusAuthenticationFailed,
-   RadiusConnectionError,
-   RadiusConfigError,
-   RadiusError,
-)
-
-app = FastAPI(
-   title="RADIUS Network Access Management",
-   description="API quản lý xác thực và giám sát truy cập mạng",
-   version="0.1.0",
-)
-
-app.include_router(accounting_router)
-app.include_router(admin_auth_router)
-=======
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import FileResponse
 
@@ -81,7 +51,6 @@ app = FastAPI(
 register_exception_handlers(app)
 
 # Đăng ký các API Routers
->>>>>>> staging
 app.include_router(health_router)
 app.include_router(admin_auth_router)
 app.include_router(accounting_router)
@@ -98,14 +67,6 @@ _DASHBOARD_FILE = Path(__file__).resolve().parent / "static" / "dashboard.html"
 def dashboard():
     """Phục vụ trang web Dashboard quản trị & giám sát hệ thống."""
     return FileResponse(_DASHBOARD_FILE)
-
-_DASHBOARD_FILE = Path(__file__).parent / "static" / "dashboard.html"
-
-
-@app.get("/", include_in_schema=False)
-@app.get("/dashboard", include_in_schema=False)
-def dashboard():
-   return FileResponse(_DASHBOARD_FILE)
 
 
 @app.post(
