@@ -1,16 +1,16 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 try:
     from app.core.exceptions import ConflictError, NotFoundError
     from app.models import Nas
-    from app.schemas.nas import NASCreate, NASResponse
+    from app.schemas.nas import NASCreate, NASResponse, NASUpdate
     from app.services import BaseService, transactional
 except ImportError:
     from core.exceptions import ConflictError, NotFoundError
     from models import Nas
-    from schemas.nas import NASCreate, NASResponse
+    from schemas.nas import NASCreate, NASResponse, NASUpdate
     from services import BaseService, transactional
 
 
@@ -51,3 +51,25 @@ class NASService(BaseService):
             return NASResponse.model_validate(nas)
         except IntegrityError as exc:
             raise ConflictError("NAS đã tồn tại") from exc
+
+    def update_nas(self, nas_id: int, data: NASUpdate) -> NASResponse:
+        values = data.model_dump(exclude_unset=True)
+        try:
+            with transactional(self.db):
+                nas = self.db.get(Nas, nas_id)
+                if nas is None:
+                    raise NotFoundError("Không tìm thấy thiết bị NAS")
+
+                for field, value in values.items():
+                    setattr(nas, field, value)
+                self.db.flush()
+            return NASResponse.model_validate(nas)
+        except IntegrityError as exc:
+            raise ConflictError("NAS đã tồn tại") from exc
+
+    def delete_nas(self, nas_id: int) -> None:
+        with transactional(self.db):
+            nas = self.db.get(Nas, nas_id)
+            if nas is None:
+                raise NotFoundError("Không tìm thấy thiết bị NAS")
+            self.db.execute(delete(Nas).where(Nas.id == nas_id))
