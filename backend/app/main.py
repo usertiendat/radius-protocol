@@ -91,7 +91,7 @@ def login(request: LoginRequest):
     except RadiusAuthenticationFailed:
         # Chỉ duy nhất Access-Reject từ FreeRADIUS mới rơi vào đây
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+              status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Tên đăng nhập hoặc mật khẩu không hợp lệ.",
         )
     except (RadiusConnectionError, RadiusConfigError, RadiusError):
