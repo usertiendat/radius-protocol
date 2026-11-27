@@ -1,4 +1,5 @@
-"""
+
+1"""
 Bộ kiểm thử Service Layer cho Admin Password Change Service (Phase 0B - Step 3.4.7.1).
 Kiểm tra tính đúng đắn của phương thức AdminAuthService.change_password():
 - Xác minh mật khẩu hiện tại bằng PBKDF2 310k vòng băm.

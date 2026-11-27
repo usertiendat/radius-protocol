@@ -12,6 +12,7 @@ try:
         health_check,
         router as health_router,
     )
+    from app.routers.nas import router as nas_router
     from app.routers.users import router as users_router
     from app.schemas import LoginRequest, LoginResponse
     from app.radius_auth import (
@@ -31,6 +32,7 @@ except ImportError:
         health_check,
         router as health_router,
     )
+    from routers.nas import router as nas_router
     from routers.users import router as users_router
     from schemas import LoginRequest, LoginResponse
     from radius_auth import (
@@ -56,6 +58,7 @@ app.include_router(admin_auth_router)
 app.include_router(accounting_router)
 app.include_router(users_router)
 app.include_router(groups_router)
+app.include_router(nas_router)
 
 # Phục vụ giao diện Dashboard
 _DASHBOARD_FILE = Path(__file__).resolve().parent / "static" / "dashboard.html"
