@@ -13,6 +13,22 @@ except ImportError:
     from services import BaseService, transactional
 
 
+DEFAULT_GROUP_POLICIES: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "Admin": (
+        ("Filter-Id", ":=", "Admin"),
+        ("Session-Timeout", ":=", "28800"),
+    ),
+    "Employee": (
+        ("Filter-Id", ":=", "Employee"),
+        ("Session-Timeout", ":=", "28800"),
+    ),
+    "Guest": (
+        ("Filter-Id", ":=", "Guest"),
+        ("Session-Timeout", ":=", "3600"),
+    ),
+}
+
+
 class GroupService(BaseService):
     def __init__(self, db: Session) -> None:
         super().__init__(db)
@@ -22,6 +38,42 @@ class GroupService(BaseService):
         groupnames.update(self.db.scalars(select(RadGroupCheck.groupname)))
         groupnames.update(self.db.scalars(select(RadGroupReply.groupname)))
         return [self.get_group_by_name(name) for name in sorted(groupnames)]
+
+    def ensure_default_groups(self) -> list[GroupResponse]:
+        controlled_attributes = {
+            attribute
+            for policy in DEFAULT_GROUP_POLICIES.values()
+            for attribute, _, _ in policy
+        }
+        with transactional(self.db):
+            for groupname, policy in DEFAULT_GROUP_POLICIES.items():
+                if not self._group_exists(groupname):
+                    self._add_attributes(
+                        RadGroupReply,
+                        groupname,
+                        [
+                            GroupAttribute(attribute=name, op=op, value=value)
+                            for name, op, value in policy
+                        ],
+                    )
+                    continue
+
+                self.db.execute(
+                    delete(RadGroupReply).where(
+                        RadGroupReply.groupname == groupname,
+                        RadGroupReply.attribute.in_(controlled_attributes),
+                    )
+                )
+                self._add_attributes(
+                    RadGroupReply,
+                    groupname,
+                    [
+                        GroupAttribute(attribute=name, op=op, value=value)
+                        for name, op, value in policy
+                    ],
+                )
+            self.db.flush()
+        return [self.get_group_by_name(name) for name in DEFAULT_GROUP_POLICIES]
 
     def get_group_by_name(self, groupname: str) -> GroupResponse:
         users = list(
