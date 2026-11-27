@@ -91,6 +91,56 @@ def test_get_groups_returns_all_groups(db_session: Session):
     assert "group_b" in names
 
 
+def test_ensure_default_groups_normalizes_role_attributes_idempotently(
+    db_session: Session,
+):
+    service = GroupService(db_session)
+    service.create_group(
+        GroupCreate(
+            groupname="Guest",
+            users=["guest_user"],
+            replies=[
+                GroupAttribute(
+                    attribute="Filter-Id",
+                    op=":=",
+                    value="stale-policy",
+                ),
+                GroupAttribute(
+                    attribute="Reply-Message",
+                    op=":=",
+                    value="Welcome",
+                ),
+            ],
+        )
+    )
+
+    groups = service.ensure_default_groups()
+    service.ensure_default_groups()
+
+    by_name = {group.groupname: group for group in groups}
+    guest_replies = {
+        attribute.attribute: attribute.value
+        for attribute in by_name["Guest"].replies
+    }
+    assert guest_replies == {
+        "Filter-Id": "Guest",
+        "Session-Timeout": "3600",
+        "Reply-Message": "Welcome",
+    }
+    assert {attribute.attribute: attribute.value for attribute in by_name["Admin"].replies} == {
+        "Filter-Id": "Admin",
+        "Session-Timeout": "28800",
+    }
+    assert {attribute.attribute: attribute.value for attribute in by_name["Employee"].replies} == {
+        "Filter-Id": "Employee",
+        "Session-Timeout": "28800",
+    }
+    refreshed_guest = service.get_group_by_name("Guest")
+    assert len(
+        [attribute for attribute in refreshed_guest.replies if attribute.attribute == "Filter-Id"]
+    ) == 1
+
+
 def test_get_group_by_name_success(db_session: Session):
     """Lấy thông tin chi tiết một nhóm theo tên."""
     service = GroupService(db_session)

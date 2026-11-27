@@ -25,7 +25,7 @@ from app.schemas.admin_auth import (
 )
 from .user import UserCreate, UserResponse, UserUpdate
 from .group import GroupAttribute, GroupCreate, GroupResponse, GroupUpdate
-from .nas import NASCreate, NASResponse
+from .nas import NASCreate, NASResponse, NASUpdate
 
 # Tự động nạp và re-export từ schemas.py hiện hữu nếu tồn tại
 _legacy_schemas_file = Path(__file__).resolve().parent.parent / "schemas.py"
@@ -53,5 +53,6 @@ __all__ = [
     "GroupUpdate",
     "GroupResponse",
     "NASCreate",
+    "NASUpdate",
     "NASResponse",
 ]

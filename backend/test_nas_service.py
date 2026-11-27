@@ -9,10 +9,10 @@ BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.core.exceptions import ConflictError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.database import Base
 from app.models import Nas
-from app.schemas.nas import NASCreate, NASResponse
+from app.schemas.nas import NASCreate, NASResponse, NASUpdate
 from app.services.nas_service import NASService
 
 
@@ -68,3 +68,45 @@ def test_create_nas_rejects_duplicate_nasname(db_session: Session):
         service.create_nas(
             NASCreate(nasname="192.0.2.12", secret="second-secret")
         )
+
+
+def test_update_nas_changes_secret_without_returning_it(db_session: Session):
+    service = NASService(db_session)
+    created = service.create_nas(
+        NASCreate(nasname="192.0.2.13", secret="initial-secret")
+    )
+
+    updated = service.update_nas(
+        created.id,
+        NASUpdate(nasname="192.0.2.14", secret="replacement-secret"),
+    )
+
+    persisted = db_session.get(Nas, created.id)
+    assert updated.nasname == "192.0.2.14"
+    assert "secret" not in updated.model_dump()
+    assert persisted is not None
+    assert persisted.secret == "replacement-secret"
+
+
+def test_update_nas_rejects_duplicate_nasname(db_session: Session):
+    service = NASService(db_session)
+    first = service.create_nas(
+        NASCreate(nasname="192.0.2.15", secret="first-secret")
+    )
+    service.create_nas(NASCreate(nasname="192.0.2.16", secret="second-secret"))
+
+    with pytest.raises(ConflictError, match="NAS đã tồn tại"):
+        service.update_nas(first.id, NASUpdate(nasname="192.0.2.16"))
+
+
+def test_delete_nas_removes_record_and_missing_id_raises(db_session: Session):
+    service = NASService(db_session)
+    created = service.create_nas(
+        NASCreate(nasname="192.0.2.17", secret="private-secret")
+    )
+
+    service.delete_nas(created.id)
+
+    assert db_session.get(Nas, created.id) is None
+    with pytest.raises(NotFoundError, match="Không tìm thấy thiết bị NAS"):
+        service.delete_nas(created.id)
