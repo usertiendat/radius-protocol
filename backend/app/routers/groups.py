@@ -4,14 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 try:
-    from app.core.admin_dependencies import CurrentAdmin
+    from app.core.admin_dependencies import CurrentAdmin, get_current_admin
     from app.core.dependencies import get_db, get_write_db
     from app.core.exceptions import BaseBusinessException
     from app.core.rbac import AdminRole, require_roles
     from app.schemas.group import GroupCreate, GroupResponse, GroupUpdate
     from app.services.group_service import GroupService
 except ImportError:
-    from core.admin_dependencies import CurrentAdmin
+    from core.admin_dependencies import CurrentAdmin, get_current_admin
     from core.dependencies import get_db, get_write_db
     from core.exceptions import BaseBusinessException
     from core.rbac import AdminRole, require_roles
@@ -34,10 +34,15 @@ def _raise_http_error(error: BaseBusinessException) -> NoReturn:
     ) from error
 
 
-@router.get("", response_model=list[GroupResponse], summary="Lấy danh sách group")
+@router.get(
+    "",
+    response_model=list[GroupResponse],
+    summary="Lấy danh sách group",
+    dependencies=[Depends(require_group_read)],
+)
 def get_groups(
     db: Session = Depends(get_db),
-    current_admin: CurrentAdmin = Depends(require_group_read),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
 ) -> list[GroupResponse]:
     return GroupService(db).get_groups()
 
@@ -47,10 +52,11 @@ def get_groups(
     response_model=GroupResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Tạo group",
+    dependencies=[Depends(require_group_write)],
 )
 def create_group(
     data: GroupCreate,
-    current_admin: CurrentAdmin = Depends(require_group_write),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
     db: Session = Depends(get_write_db),
 ) -> GroupResponse:
     try:
@@ -63,11 +69,12 @@ def create_group(
     "/{groupname}",
     response_model=GroupResponse,
     summary="Cập nhật group",
+    dependencies=[Depends(require_group_write)],
 )
 def update_group(
     groupname: str,
     data: GroupUpdate,
-    current_admin: CurrentAdmin = Depends(require_group_write),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
     db: Session = Depends(get_write_db),
 ) -> GroupResponse:
     try:
@@ -80,10 +87,11 @@ def update_group(
     "/{groupname}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Xóa group",
+    dependencies=[Depends(require_group_write)],
 )
 def delete_group(
     groupname: str,
-    current_admin: CurrentAdmin = Depends(require_group_write),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
     db: Session = Depends(get_write_db),
 ) -> Response:
     try:
@@ -97,11 +105,12 @@ def delete_group(
     "/{groupname}",
     response_model=GroupResponse,
     summary="Lấy thông tin group",
+    dependencies=[Depends(require_group_read)],
 )
 def get_group_by_name(
     groupname: str,
     db: Session = Depends(get_db),
-    current_admin: CurrentAdmin = Depends(require_group_read),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
 ) -> GroupResponse:
     try:
         return GroupService(db).get_group_by_name(groupname)

@@ -4,14 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 try:
-    from app.core.admin_dependencies import CurrentAdmin
+    from app.core.admin_dependencies import CurrentAdmin, get_current_admin
     from app.core.dependencies import get_db, get_write_db
     from app.core.exceptions import BaseBusinessException
     from app.core.rbac import AdminRole, require_roles
     from app.schemas.user import UserCreate, UserResponse, UserUpdate
     from app.services.user_service import UserService
 except ImportError:
-    from core.admin_dependencies import CurrentAdmin
+    from core.admin_dependencies import CurrentAdmin, get_current_admin
     from core.dependencies import get_db, get_write_db
     from core.exceptions import BaseBusinessException
     from core.rbac import AdminRole, require_roles
@@ -39,10 +39,11 @@ def _raise_http_error(error: BaseBusinessException) -> NoReturn:
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Tạo người dùng",
+    dependencies=[Depends(require_user_write)],
 )
 def create_user(
     data: UserCreate,
-    current_admin: CurrentAdmin = Depends(require_user_write),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
     db: Session = Depends(get_write_db),
 ) -> UserResponse:
     try:
@@ -55,12 +56,13 @@ def create_user(
     "",
     response_model=list[UserResponse],
     summary="Lấy danh sách người dùng",
+    dependencies=[Depends(require_user_read)],
 )
 def get_users(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1),
     db: Session = Depends(get_db),
-    current_admin: CurrentAdmin = Depends(require_user_read),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
 ) -> list[UserResponse]:
     return UserService(db).get_users(skip=skip, limit=limit)
 
@@ -69,11 +71,12 @@ def get_users(
     "/{username}",
     response_model=UserResponse,
     summary="Lấy thông tin người dùng",
+    dependencies=[Depends(require_user_read)],
 )
 def get_user_by_username(
     username: str,
     db: Session = Depends(get_db),
-    current_admin: CurrentAdmin = Depends(require_user_read),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
 ) -> UserResponse:
     try:
         return UserService(db).get_user_by_username(username)
@@ -85,11 +88,12 @@ def get_user_by_username(
     "/{username}",
     response_model=UserResponse,
     summary="Cập nhật người dùng",
+    dependencies=[Depends(require_user_write)],
 )
 def update_user(
     username: str,
     data: UserUpdate,
-    current_admin: CurrentAdmin = Depends(require_user_write),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
     db: Session = Depends(get_write_db),
 ) -> UserResponse:
     try:
@@ -102,10 +106,11 @@ def update_user(
     "/{username}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Xóa người dùng",
+    dependencies=[Depends(require_user_write)],
 )
 def delete_user(
     username: str,
-    current_admin: CurrentAdmin = Depends(require_user_write),
+    current_admin: CurrentAdmin = Depends(get_current_admin),
     db: Session = Depends(get_write_db),
 ) -> Response:
     try:
